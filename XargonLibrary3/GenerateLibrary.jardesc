@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="WINDOWS-1252" standalone="no"?>
+<jardesc>
+    <jar path="XargonLibrary2/xargonlib.jar"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/XargonLibrary2/GenerateLibrary.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
+    <selectedProjects/>
+    <manifest generateManifest="false" manifestLocation="/XargonLibrary2/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
+        <sealing sealJar="false">
+            <packagesToSeal/>
+            <packagesToUnSeal/>
+        </sealing>
+    </manifest>
+    <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.bxmp"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.streams"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.jvcon"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.util"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.marshal"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.lxmp"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.smartnet"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.events"/>
+        <javaElement handleIdentifier="=XargonLibrary2/src&lt;it.xargon.lrpc"/>
+    </selectedElements>
+</jardesc>
