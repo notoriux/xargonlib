@@ -109,25 +109,15 @@ public abstract class EventsSourceImpl implements EventsSource {
          
          if (allSinks.length==0) return null;
 
+         InvocationDispatcher idisp=new InvocationDispatcher(EventsSourceImpl.this, allSinks, method, args);
+         
          switch (eventKind) {
-            case SIMPLE: 
-               new InvocationDispatcher(EventsSourceImpl.this, allSinks, method, args).simpleInvocation();
-               break;
-            case SERIAL:
-               new InvocationDispatcher(EventsSourceImpl.this, allSinks, method, args).serialInvocation(ithreadPool);
-               break;
-            case PARALLEL:
-               new InvocationDispatcher(EventsSourceImpl.this, allSinks, method, args).parallelInvocation(ithreadPool);
-               break;
-            case SWING:
-               new InvocationDispatcher(EventsSourceImpl.this, allSinks, method, args).swingInvocation();
-               break;
-            case CHAIN_FIRST:
-               result=new InvocationDispatcher(EventsSourceImpl.this, allSinks, method, args).chainedInvocation(true);
-               break;
-            case CHAIN_LAST:
-               result=new InvocationDispatcher(EventsSourceImpl.this, allSinks, method, args).chainedInvocation(false);
-               break;
+            case SIMPLE: idisp.simpleInvocation(); break;
+            case SERIAL: idisp.serialInvocation(ithreadPool); break;
+            case PARALLEL: idisp.parallelInvocation(ithreadPool); break;
+            case SWING: idisp.swingInvocation(); break;
+            case CHAIN_FIRST: result=idisp.chainedInvocation(true); break;
+            case CHAIN_LAST: result=idisp.chainedInvocation(false); break;
          }
          
          return result;

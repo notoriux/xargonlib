@@ -444,7 +444,7 @@ public class Bitwise {
       return result;
   }
    
-   public static byte[] serializeObject(Object obj) {
+   public static byte[] serializeObject(Serializable obj) {
       if (obj==null) return BZERO;
       if (!(obj instanceof Serializable)) {
          throw new IllegalArgumentException("Not serializable object");
@@ -461,14 +461,14 @@ public class Bitwise {
       return bos.toByteArray();
    }
    
-   public static Object deserializeObject(byte[] vl) {
-      Object obj=null;
+   public static Serializable deserializeObject(byte[] vl) {
+      Serializable obj=null;
       if ((vl==null) || (vl.length==0)) return null;
       
       ByteArrayInputStream bis=new ByteArrayInputStream(vl);
       try {
          ObjectInputStream ois=new ObjectInputStream(bis);
-         obj=ois.readObject();
+         obj=(Serializable) ois.readObject();
          ois.close();
          bis.close();
       } catch (IOException ignored) {
