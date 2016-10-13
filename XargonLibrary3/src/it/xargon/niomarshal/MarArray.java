@@ -7,39 +7,6 @@ import java.util.stream.Collectors;
 
 import it.xargon.util.*;
 
-//component type (lunghezza nome, nome)
-//numero di dimensioni
-//per ogni dimensione: numero di elementi
-//grandezza,contenuto
-//grandezza,contenuto
-//grandezza,contenuto
-//...
-//
-//L'array scritto nel flusso è "appiattito": viene incrementato solo l'ultimo indice,
-//incrementando quello di livello superiore se l'ultimo indice supera il limite
-//
-// Esempio [5][3]:
-//
-// a b c d e
-// f g h i j
-// k l m n o
-//
-// viene emesso come:
-// a f k b g l c h m d i n e j o
-//
-// Su 3 dimensioni: [4][3][2]
-//
-//     /m n o p
-//    / q r s t
-//   /  u v w x
-//  /        /
-// a b c d  /
-// e f g h /
-// i j k l/
-//
-// viene emesso come:
-// a m e q i u b n f r j v c o g s k w d p h t l x
-
 public class MarArray extends AbstractMarshaller<Object> {
    public MarArray() {super("ARRAY");}
    
@@ -47,96 +14,105 @@ public class MarArray extends AbstractMarshaller<Object> {
       if (javaclass.isArray()) return 0.8f;
       return 0f;
    }
-   
+
    @Override
-   public ByteBuffer marshal(Object obj) {
-      ArrayList<ByteBuffer> elements=new ArrayList<>();
+   @SuppressWarnings("unchecked")
+   public ByteBuffer marshal(Object array) {
+      ArrayList<ByteBuffer> accumulator=new ArrayList<>();
       
-      //marshaller del componentType
-      AbstractMarshaller<?> ctmar=getDataBridge().getBestMarshaller(Tools.getBaseComponentType(obj));
+      //Ottenere un marshaller più fedele possibile al component type e annotarlo nell'accumulatore
+      AbstractMarshaller<Object> ctmar=(AbstractMarshaller<Object>) getDataBridge().getBestMarshaller(array.getClass().getComponentType());
+      ByteBuffer ctmarBuf=getDataBridge().allocate(Integer.BYTES + ctmar.getEncName().length);
+      ctmarBuf.putInt(ctmar.getEncName().length).put(ctmar.getEncName());
+      ctmarBuf.flip();
+      accumulator.add(ctmarBuf);
+
+      //Ottenere il numero di elementi e annotarli nell'accumulatore
+      int cnt=Array.getLength(array);
+      ByteBuffer cntBuf=getDataBridge().allocate(Integer.BYTES);
+      cntBuf.putInt(cnt);
+      cntBuf.flip();
+      accumulator.add(cntBuf);
       
-      //serializzare il nome del marshaller
-      ByteBuffer ctbuf=alloc(Integer.BYTES + ctmar.getEncName().length);
-      ctbuf.putInt(ctmar.getEncName().length).put(ctmar.getEncName()).flip();
-      elements.add(ctbuf);
-      
-      //serializzare il numero di dimensioni, e la grandezza di ogni dimensione
-      int[] dims=Tools.getArrayDimensions(obj);
-      ByteBuffer dimbuf=alloc(Integer.BYTES * (dims.length+1));
-      dimbuf.asIntBuffer().put(dims.length).put(dims).flip();
-      elements.add(dimbuf);
-   
-      //marshal di ogni elemento dell'array (grandezza/contenuto)
-      //se vi è una sola dimensione di lunghezza zero: finire qui
-      int[] indexCounters=(dims.length==1 && dims[0]==0)?null:new int[dims.length];
-      
-      while (indexCounters!=null) {
-         Object arrayValue=Tools.getArrayValue(obj, indexCounters);
-         ByteBuffer elemBuf=null;
-         if (arrayValue==null) {
-            //il contenuto di questo indice è NULL: inseriamo un indicatore byte "0"
-            elemBuf=alloc(1).put((byte)0);
-            elemBuf.flip();
-            elements.add(elemBuf);
+      //Passare ogni elemento dell'array direttamente nell'unmarshaller
+      //segnalando la presenza con un tag "FF" e null con "00"
+      for(int index=0;index<cnt;index++) {
+         Object element=Array.get(array, index);
+         if (element==null) {
+            //il contenuto di questo indice è NULL: inseriamo un indicatore byte "00"
+            ByteBuffer elemNull=alloc(1).put((byte)0x00);
+            elemNull.flip();
+            accumulator.add(elemNull);
          } else {
-            //il contenuto di questo indice è presente: inseriamo un indicatore byte "1" seguito
-            //dalla serializzazione senza il nome del marshaller
-            elemBuf=alloc(1).put((byte)1);
-            elemBuf.flip();
-            elemBuf=getDataBridge().marshal(arrayValue, true);
-            elements.add(elemBuf);
+            //il contenuto di questo indice è presente: inseriamo un indicatore byte "FF" seguito
+            //dalla serializzazione diretta senza passare dal databridge
+            ByteBuffer elemNull=alloc(1).put((byte)0xFF);
+            elemNull.flip();
+            accumulator.add(elemNull);
+            ByteBuffer elemBuf=ctmar.marshalObject(element);
+            ByteBuffer elemLen=alloc(Integer.BYTES).putInt(elemBuf.limit());
+            elemLen.flip();
+            accumulator.add(elemLen);
+            accumulator.add(elemBuf);
          }
-         indexCounters=Tools.nextArrayIndex(indexCounters, dims);
       }
       
       //Raccogliere tutti i risultati in un solo buffer
-      int totalSize=elements.stream().collect(Collectors.summingInt(ByteBuffer::remaining));
+      int totalSize=accumulator.stream().collect(Collectors.summingInt(ByteBuffer::remaining));
       ByteBuffer result=alloc(totalSize);
-      elements.forEach(result::put);
+      accumulator.forEach(result::put);
+      result.flip();
       
       return result;
    }
    
    @Override
    public Object unmarshal(ByteBuffer buffer) {
-      //Leggiamo il nome del marshaller per il component type
-      int ctlen=buffer.getInt();
-      byte[] bmarname=new byte[ctlen];
-      buffer.get(bmarname);
-      String ctMarName=Bitwise.byteArrayToAsciiString(bmarname);
+      //Prima di tutto: nome del marshaller da usare per i singoli elementi
+      String ctMarName=Tools.bufferToString(buffer);
       
       //Otteniamo il marshaller corrispondente
       AbstractMarshaller<?> ctmar=getDataBridge().getMarshallerByName(ctMarName);
       
-      //Numero di dimensioni contenute nell'array
-      int dimcnt=buffer.getInt();
-      int[] dims=new int[dimcnt];
+      //Otteniamo il numero di elementi contenuti nel buffer
+      int cnt=buffer.getInt();
       
-      //Grandezza di ogni dimensione
-      buffer.asIntBuffer().get(dims);
+      //Prepariamoci ad accogliere gli elementi in un array generico
+      //(ci servirà per ottenere il component type definitivo)
+      Object[] elements=new Object[cnt];
+      Class<?> foundComponentType=null;
       
-      //Contatori per la rilettura negli indici...
-      int[] indexCounters=new int[dimcnt];
-      
-      //Prepariamo la destinazione
-      Object tarray=Array.newInstance(ctmar.getAffineClass(), dims);
-      
-      //Nel caso in cui l'array abbia una sola dimensione di lunghezza zero
-      //non vi sono altri dati, e l'oggetto va restituito così com'è
-      if (dims.length==1 && dims[0]==0) return tarray;
-      
-      //Altrimenti reinseriamo tutti gli elementi nella loro posizione originale
-      if (!((dims.length==1) && (dims[0]==0))) {
-         while (indexCounters!=null) {
-            if (buffer.get()!=0) { //saltiamo i null
-               Object arrayValue=getDataBridge().unmarshal(buffer, ctmar.getAffineClass());
-               Tools.setArrayValue(tarray, indexCounters, arrayValue);
-            }
+      //Estraiamo gli elementi dal buffer
+      for(int index=0;index<cnt;index++) {
+         if (buffer.get()!=0) { //se l'elemento è null, saltiamo
+            //Dimensione complessiva dell'elemento
+            int elemLen=buffer.getInt();
             
-            indexCounters=Tools.nextArrayIndex(indexCounters, dims);
+            //slice del buffer (come farebbe il databridge)
+            ByteBuffer elemBuf=buffer.slice().asReadOnlyBuffer();
+            elemBuf.limit(elemLen);
+            
+            //Lettura dell'elemento
+            elements[index]=ctmar.unmarshal(elemBuf);
+            
+            //portiamo avanti il buffer
+            buffer.position(buffer.position()+elemLen);
+            
+            //rileviamo il component type
+            if (foundComponentType==null) foundComponentType=elements[index].getClass();
+            else if (!foundComponentType.isAssignableFrom(elements[index].getClass()))
+               foundComponentType=Object.class; //caso particolare: l'array contiene oggetti incompatibili tra loro
          }
       }
-
-      return tarray;
+      
+      //Il buffer indicava un array vuoto. Fidiamoci della classe indicata nel marshaller.
+      if (foundComponentType==null) foundComponentType=ctmar.getAffineClass();
+      
+      //Ricreiamo un array secondo il component type trovato
+      //e riportiamo tutti gli elementi ricavati al suo interno
+      Object array=Array.newInstance(foundComponentType, cnt);
+      for(int index=0;index<cnt;index++) Array.set(array, index, elements[index]);
+      
+      return array;
    }
 }

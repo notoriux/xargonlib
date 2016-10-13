@@ -1,6 +1,7 @@
 package it.xargon.util;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 
 public class Debug {
@@ -102,6 +103,54 @@ public class Debug {
    public static void dumpBytesFormatted(String indent, byte[] data, PrintWriter out) {
       dumpBytesFormatted(indent, data, 0, data.length, out);
    }
+   
+   public static void dumpBufferFormatted(String indent, ByteBuffer buffer, PrintWriter out) {
+      out.printf("hasArray: %1$b - position: %2$d - limit: %3$d - capacity: %4$d%n", buffer.hasArray(), buffer.position(), buffer.limit(), buffer.capacity());
+      
+      int column=0;
+      char[] disp=new char[16];
+      
+      int cnt=0;
+      for(;cnt<buffer.limit();cnt++) {
+         disp[column]=Bitwise.asChar(buffer.get(cnt));
+         if (disp[column]<32 || disp[column]>126) disp[column]='.';
+         if (column==0) {
+            out.print(indent);
+            out.printf("%1$08X -", cnt);
+            if (cnt==buffer.position()) out.print(">"); else out.print(" ");
+         } else if (column==8) {
+            if (cnt==buffer.position()+1) out.print("<");  else out.print(" ");
+            out.print(":");
+            if (cnt==buffer.position()) out.print(">"); else out.print(" ");
+         } else {
+            if (cnt==buffer.position()) out.print(">");
+            else if (cnt==buffer.position()+1) out.print("<");
+            else out.print(" ");
+         }
+         out.printf("%1$02X", buffer.get(cnt));
+         if (column==15) {
+            if (cnt==buffer.position()) out.print("<"); else out.print(" ");
+            out.print("- ");
+            dumpDisp(disp, column, out);out.println();
+         }
+         column=(column==15)?0:column+1;
+      }
+      
+      if (column>0) {
+         for(int i=column;i<16;i++) {
+            if (i==8) {
+               if (cnt==buffer.position()+1) {cnt++;out.print("<:   ");}
+               else out.print(" :   ");
+            } else {
+               if (cnt==buffer.position()+1) {cnt++;out.print("<  ");}
+               else out.print("   ");
+            }
+         }
+         out.print(" - ");
+         dumpDisp(disp, column-1, out);
+         out.println();
+      }
+   }
 
    public static void dumpBytesFormatted(String indent, byte[] data, int offset, int length, PrintWriter out) {
       int column=0;
@@ -130,6 +179,25 @@ public class Debug {
    
    private static void dumpDisp(char[] disp, int cnt, PrintWriter out) {
       for(int i=0;i<=cnt;i++) out.print(disp[i]);
+   }
+   
+   private static ThreadLocal<ArrayDeque<Long>> timers=ThreadLocal.withInitial(ArrayDeque<Long>::new);
+   
+   public static void startTimer() {
+      timers.get().addLast(System.nanoTime());
+   }
+   
+   public static long stopTimer(String format) {
+      return stopTimer(format, Debug.stdout);
+   }
+   
+   public static long stopTimer(String format, PrintWriter out) {
+      long stop=System.nanoTime();
+      if (timers.get().size()==0) return -1;
+      long start=timers.get().removeLast();
+      long dur=stop-start;
+      out.printf(format, dur);
+      return dur;
    }
    
    public static void dumpAllTreadStacks(PrintStream out) {

@@ -17,6 +17,8 @@ public abstract class AbstractPrimitiveMarshaller<T> extends AbstractMarshaller<
          if (!primTypeAccessor.getType().equals(Class.class))
             throw new IllegalStateException(affineClass.getName() + " \"TYPE\" field isn't a Class reference");
          primClass=(Class<?>) primTypeAccessor.get(null);
+         if (!primClass.isPrimitive())
+            throw new IllegalStateException(affineClass.getName() + " \"TYPE\" field isn't a primitive Class reference");
       } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
          throw new IllegalStateException("Unable to detect primitive type for " + super.getAffineClass().getName(), e);
       }

@@ -9,28 +9,28 @@ import it.xargon.util.*;
 
 public class SmartInputStream extends EventsSourceImpl {
    @FunctionalInterface @Event
-   public interface DataArrived {public void raise(byte[] data, int length);}
-   public static Class<DataArrived> DATAARRIVED=DataArrived.class;
+   public interface DataArrived {public void with(byte[] data, int length);}
+   public final static Class<DataArrived> DATAARRIVED=DataArrived.class;
    
    @FunctionalInterface @Event
-   public interface StreamException {public void raise(StreamErrorReaction reaction);}
-   public static Class<StreamException> STREAMEXCEPTION=StreamException.class;
+   public interface StreamException {public void with(StreamErrorReaction reaction);}
+   public final static Class<StreamException> STREAMEXCEPTION=StreamException.class;
 
    @FunctionalInterface @Event
    public interface Started extends Runnable {}
-   public static Class<Started> STARTED=Started.class;
+   public final static Class<Started> STARTED=Started.class;
    
    @FunctionalInterface @Event
    public interface Stopped extends Runnable {}
-   public static Class<Stopped> STOPPED=Stopped.class;
+   public final static Class<Stopped> STOPPED=Stopped.class;
    
    @FunctionalInterface @Event
    public interface Suspended extends Runnable {}
-   public static Class<Suspended> SUSPENDED=Suspended.class;
+   public final static Class<Suspended> SUSPENDED=Suspended.class;
    
    @FunctionalInterface @Event
    public interface Restored extends Runnable {}
-   public static Class<Restored> RESTORED=Restored.class;
+   public final static Class<Restored> RESTORED=Restored.class;
    
    private byte[] buffer=null;
    
@@ -76,7 +76,7 @@ public class SmartInputStream extends EventsSourceImpl {
       startlock=null;
 
       //Solo ora possiamo notificare dell'evento tutti i listener, prima di ritornare al chiamante
-      raise(Started.class).run();
+      raise(STARTED);
    }
    
    public synchronized InputStream startSuspended() {
@@ -146,7 +146,7 @@ public class SmartInputStream extends EventsSourceImpl {
          if ((waitForFreeze!=null) && (waitForRelease==null)) {
             running=false;
             waitForRelease=new BooleanLatch();
-            raise(Suspended.class).run(); //Avviamo chi è interessato che la consegna degli eventi è sospesa
+            raise(SUSPENDED); //Avviamo chi è interessato che la consegna degli eventi è sospesa
             waitForFreeze.open();
             //permette al chiamante di suspendInputStream di ottenere l'inputstream gestito
             try {waitForRelease.await();} catch (InterruptedException ignored) {}
@@ -154,19 +154,19 @@ public class SmartInputStream extends EventsSourceImpl {
             waitForRelease=null; //pronti per il prossimo giro
             running=true;
             if (startlock!=null) startlock.open();
-            raise(Restored.class).run(); //Avviamo chi è interessato che la consegna degli eventi è riattivata
+            raise(RESTORED); //Avviamo chi è interessato che la consegna degli eventi è riattivata
          }
          try {
             takenbytes=istream.read(buffer);
             if (takenbytes!=-1) {
-               raise(DataArrived.class).raise(buffer, takenbytes);
+               raise(DATAARRIVED).with(buffer, takenbytes);
                if (istream.available()>buffer.length) buffer=new byte[istream.available()];
             }
             else timeToClose=true;
          } catch (IOException ex) {
             if (!timeToClose) {
                StreamErrorReaction ex2=new StreamErrorReaction(ex);               
-               raise(StreamException.class).raise(ex2);
+               raise(STREAMEXCEPTION).with(ex2);
                if (ex2.stopRequested()) timeToClose=true;
             }
          }
@@ -174,7 +174,7 @@ public class SmartInputStream extends EventsSourceImpl {
 
       running=false;
 
-      raise(Stopped.class).run();
+      raise(STOPPED);
       runner.setName(prevThreadName);
    }
 }

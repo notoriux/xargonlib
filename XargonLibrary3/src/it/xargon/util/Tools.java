@@ -1,8 +1,9 @@
 package it.xargon.util;
 
 import java.io.*;
-import java.lang.reflect.Array;
+//import java.lang.reflect.Array;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormatSymbols;
@@ -12,6 +13,29 @@ import javax.swing.SwingUtilities;
 
 public class Tools {
    private Tools() {}
+   
+   public static String bufferToString(ByteBuffer buffer) {
+      int len=buffer.getInt();
+      byte[] src=new byte[len];
+      buffer.get(src);
+      return getString(src);
+   }
+   
+   public static byte[] getBytes(String text) {
+      try {
+         return text.getBytes("UTF8");
+      } catch (UnsupportedEncodingException e) {
+         throw new IllegalStateException(e);
+      }
+   }
+   
+   public static String getString(byte[] src) {
+      try {
+         return new String(src, "UTF8");
+      } catch (UnsupportedEncodingException e) {
+         throw new IllegalStateException(e);
+      }
+   }
    
    public static Class<?>[] getClasses(String packageName) throws ClassNotFoundException, IOException {
       ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
@@ -49,7 +73,7 @@ public class Tools {
       return classes;
    }
    
-   public static int getArrayDimCount(Object array) {
+   /*public static int getArrayDimCount(Object array) {
       if (array==null) throw new NullPointerException();      
       int dim=0;
       Class<?> c = array.getClass();
@@ -96,7 +120,17 @@ public class Tools {
    public static Object getArrayValue(Object array, int[] indexes) {
       if ((array==null) || (indexes==null)) throw new NullPointerException();
       Object result=array;
-      for(int cnt=0;cnt<indexes.length;cnt++) result=Array.get(result, indexes[cnt]);
+      try {
+         for(int cnt=0;cnt<indexes.length;cnt++) result=Array.get(result, indexes[cnt]);
+      } catch (ArrayIndexOutOfBoundsException ex) {
+         //In java è possibile definire un array multidimensionale in cui una sotto-dimensione
+         //non è allineata come limiti alle dimensioni dei "sibling": esempio, su un array [3][3]:
+         //{a,b,c},{d,e},{g,h,i}
+         //Tentare di accedere all'elemento [1][2] emette un ArrayIndexOutOfBoundsException
+         //piuttosto restituiamo null...
+         return null;
+      }
+      
       return result;
    }
    
@@ -105,7 +139,7 @@ public class Tools {
       Object target=array;
       for(int cnt=0;cnt<indexes.length-1;cnt++) target=Array.get(target, indexes[cnt]);
       Array.set(target, indexes[indexes.length-1], value);
-   }
+   }*/
    
    public static void ensureSwingThread(Runnable operation) {
       if (SwingUtilities.isEventDispatchThread()) operation.run();

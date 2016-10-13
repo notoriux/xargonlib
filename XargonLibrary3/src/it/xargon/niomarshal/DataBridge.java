@@ -36,16 +36,26 @@ public class DataBridge {
       }
    }
    
+   private final static Field dataBridgeField;
+   static {
+      Field tmp=null;
+      try {
+         tmp=AbstractMarshaller.class.getDeclaredField("dataBridge");
+         tmp.setAccessible(true);
+      } catch (NoSuchFieldException | SecurityException e) {
+         e.printStackTrace();
+      }
+      dataBridgeField=tmp;
+   }
+   
    public void installMarshaller(Class<? extends AbstractMarshaller<?>> marshallerClass) {
       AbstractMarshaller<?> newMarshaller=null;
 
       try {
-         Constructor<? extends AbstractMarshaller<?>> marConstructor=marshallerClass.getConstructor(DataBridge.class);
-         newMarshaller=marConstructor.newInstance(this);
-         Field dataBridgeField=marshallerClass.getDeclaredField("dataBridge");
-         dataBridgeField.setAccessible(true);
+         Constructor<? extends AbstractMarshaller<?>> marConstructor=marshallerClass.getConstructor();
+         newMarshaller=marConstructor.newInstance();
          dataBridgeField.set(newMarshaller, this);
-      } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchFieldException e) {
+      } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
          throw new IllegalArgumentException(e);
       }
       
@@ -81,53 +91,35 @@ public class DataBridge {
    }
    
    public ByteBuffer marshal(Object obj) {
-      return marshal(obj, false);
-   }
-   
-   ByteBuffer marshal(Object obj, boolean dropMarshallerName) {
       AbstractMarshaller<?> mar=(obj==null)?mar=getBestMarshaller(Void.class):getBestMarshaller(obj.getClass());
       if (mar==null) throw new IllegalArgumentException("No suitable marshaller found");
       
       byte[] marName=mar.getEncName();
       ByteBuffer contents=mar.marshalObject(obj);
       
-      ByteBuffer result=allocate((dropMarshallerName?Integer.BYTES:(Integer.BYTES + marName.length)) +  Integer.BYTES + contents.remaining());
-      result.putInt(marName.length);
-      if (!dropMarshallerName) result.put(marName);
-      result.putInt(contents.remaining()).put(contents);
+      ByteBuffer result=allocate(Integer.BYTES + marName.length +  Integer.BYTES + contents.remaining());
+      result.putInt(marName.length);result.put(marName);
+      result.putInt(contents.remaining()).put(contents).flip();
             
       return result;
    }
-   
-   //In questa forma ci si aspetta che il tipo di dato sia contenuto nell'intestazione
-   public Object unmarshal(ByteBuffer contents) {return unmarshal(contents, null);}
+
+   public Object unmarshal(ByteBuffer contents) {return unmarshal(contents, Object.class);}
    
    public <T> T unmarshal(ByteBuffer contents, Class<T> expectedType) {
       if (contents==null) throw new NullPointerException();
       
-      String marName=null;
-      AbstractMarshaller<?> mar=null;
+      String marName=Tools.bufferToString(contents);
+      AbstractMarshaller<?>mar=installedMarshallers.get(marName);
       
-      int nlen=contents.getInt();
-      if (nlen>0) {
-         byte[] bmarName=new byte[nlen];
-         contents.get(bmarName);
-         marName=new String(bmarName);
-         mar=installedMarshallers.get(marName);
-         if (mar==null) throw new IllegalArgumentException("Unknown marshaller in contents \"" + marName + "\"");
-         
-         if (expectedType!=null && mar.getAffinity(expectedType)==0f)
-            throw new IllegalArgumentException("Marshaller " + mar.getName() + " has nothing to do with \"" + expectedType.getName() + "\" class");
-      } else {
-         if (expectedType==null)
-            throw new IllegalArgumentException("Contents have any marshaller indication, please tell me how to treat them via \"expectedType\" argument");
-         mar=getBestMarshaller(expectedType);
-         if (mar==null) throw new IllegalArgumentException("No suitable marshaller for \"" + expectedType.getName() + "\" class and no one was specified in the contents");
-      }
-
+      if (mar==null) throw new IllegalArgumentException("Unknown marshaller in contents \"" + marName + "\"");
+      if (!(Object.class.equals(expectedType)) && mar.getAffinity(expectedType)==0f)
+         throw new IllegalArgumentException("Marshaller " + mar.getName() + " has nothing to do with \"" + expectedType.getName() + "\" class");
+      
       int clen=contents.getInt();
       ByteBuffer objspec=contents.slice().asReadOnlyBuffer();
-      objspec.limit(objspec.position()+clen);
+      objspec.limit(clen);
+      contents.position(contents.position()+clen);
             
       return expectedType.cast(mar.unmarshal(objspec));
    }

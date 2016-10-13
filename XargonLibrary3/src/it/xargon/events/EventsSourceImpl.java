@@ -10,7 +10,6 @@ public abstract class EventsSourceImpl implements EventsSource {
    private HashMap<Class<?>, EventProcessor> eventProcessors=null;
    private HashMap<Identifier, SinkRegistration> registrationIds=null;
    private IdGenerator idgen=null;
-   private ExecutorService ithreadPool=null;
    
    private class SinkRegistration {
       public EventProcessor eventProcessor;
@@ -113,8 +112,8 @@ public abstract class EventsSourceImpl implements EventsSource {
          
          switch (eventKind) {
             case SIMPLE: idisp.simpleInvocation(); break;
-            case SERIAL: idisp.serialInvocation(ithreadPool); break;
-            case PARALLEL: idisp.parallelInvocation(ithreadPool); break;
+            case SERIAL: idisp.serialInvocation(getThreadPool()); break;
+            case PARALLEL: idisp.parallelInvocation(getThreadPool()); break;
             case SWING: idisp.swingInvocation(); break;
             case CHAIN_FIRST: result=idisp.chainedInvocation(true); break;
             case CHAIN_LAST: result=idisp.chainedInvocation(false); break;
@@ -124,12 +123,10 @@ public abstract class EventsSourceImpl implements EventsSource {
       }
    }
    
-   public EventsSourceImpl() {this(null);}
-   
-   public EventsSourceImpl(ExecutorService threadPool) {
-      ithreadPool=threadPool;
+   public EventsSourceImpl() {
       idgen=new IdGenerator();
       eventProcessors=new HashMap<>();
+      registrationIds=new HashMap<>();
       Class<?>[] innerClasses=this.getClass().getClasses();
       for(Class<?> inner:innerClasses) {
          Event evAnnot=inner.getAnnotation(Event.class);
@@ -137,6 +134,8 @@ public abstract class EventsSourceImpl implements EventsSource {
          if (evAnnot!=null && funcAnnot!=null) eventProcessors.put(inner, new EventProcessor(inner));
       }
    }
+   
+   protected ExecutorService getThreadPool() {return null;}
    
    protected ExceptionReaction handleUncaughtException(Object sink, Class<?> event, Throwable tr) {
       tr.printStackTrace(Debug.stderr);return ExceptionReaction.UNREGISTER;
@@ -149,10 +148,76 @@ public abstract class EventsSourceImpl implements EventsSource {
    protected <T> T raise(Class<T> evclass) {
       checkEventProcessor(evclass);
       EventProcessor evproc=eventProcessors.get(evclass);
+      //Ereditare un evento da Runnable indica che non vi sono parametri da passare: invocazione diretta
+      if (Runnable.class.isAssignableFrom(evclass)) {
+         ((Runnable) evproc.getProxy(evclass)).run();
+         return null;
+      }
       return evproc.getProxy(evclass);
    }
    
-   public <T> Identifier onEvent(Class<T> evclass, T sink) {
+   public Identifier[] bindEvents(final Object sink) {
+      //- scandire tutti i metodi immediati (non derivati) della classe di "sink", pubblici e privati
+      Class<?> sinkClass=sink.getClass();
+      Method[] methodsToScan=sinkClass.getDeclaredMethods();
+      HashMap<Class<?>, Object> allFoundSinks=new HashMap<>();
+
+      for(final Method sinkMethod:methodsToScan) {
+         OnEvent eventAnnot=sinkMethod.getAnnotation(OnEvent.class);
+         if (eventAnnot!=null) {
+            Class<?> eventClass=eventAnnot.value();
+            //- per ogni metodo annotato con @OnEvent:
+            //- controllare se la classe passata a @OnEvent è presente tra
+            //  gli eventi rilevati in fase di costruzione
+            if (!eventProcessors.containsKey(eventClass)) 
+               throw new IllegalArgumentException("Class \"" + eventClass.getName() + "\" on sink method \"" + sinkMethod.getName() + "\" isn't an event");
+            
+            //- controllare se la firma del metodo corrisponde alla firma
+            //  del metodo dell'interfaccia funzionale associata all'evento
+            Method eventMethod=eventClass.getMethods()[0];
+            Class<?>[] sinkSignature=sinkMethod.getParameterTypes();
+            Class<?>[] eventSignature=eventMethod.getParameterTypes();
+            
+            //- se la firma non corrisponde, emettere un'eccezione e fallire l'intera operazione.
+            if (!Arrays.equals(sinkSignature, eventSignature))
+               throw new IllegalArgumentException("Sink method \"" + sinkMethod.getName() + "\" signature isn't the same of the event \"" + eventClass.getCanonicalName() + "\"");
+            
+            //Altrimenti...
+            //- creare un proxy tramite interfaccia funzionale dell'evento, il cui InvocationHandler richiami esattamente
+            //  il metodo dell'oggetto sink che abbiamo trovato prima. Settare il flag "accessible" se necessario.
+
+            if (Modifier.isPrivate(sinkMethod.getModifiers())) sinkMethod.setAccessible(true);
+            
+            Object sinkInvoker=Proxy.newProxyInstance(
+                  Thread.currentThread().getContextClassLoader(),
+                  new Class<?>[] {eventClass},
+                  (object, method, args) -> {
+                     //Paracadute per i metodi della classe Object
+                     /*if (method.getClass().equals(Object.class)) return method.invoke(sink, args);
+                     else */return sinkMethod.invoke(sink, args);
+                  });
+            //- Conservarlo in una lista temporanea.
+            allFoundSinks.put(eventClass, sinkInvoker);
+         }
+      }
+
+      //- Se i proxy sono stati tutti generati con successo, associare ogni proxy al proprio evento
+      //- annotare tutti gli Identifier creati
+      Identifier[] registrations=new Identifier[allFoundSinks.size()];
+      int index=0;
+      for(Map.Entry<Class<?>, Object> entry:allFoundSinks.entrySet()) {
+         registrations[index]=_onEvent(entry.getKey(), entry.getValue());
+         index++;
+      }
+
+      return registrations;
+   }
+   
+   public <T> Identifier onEvent(Class<T> evClass, T sink) {
+      return _onEvent(evClass, sink);
+   }
+   
+   private Identifier _onEvent(Class<?> evclass, Object sink) {
       checkEventProcessor(evclass);
       EventProcessor evproc=eventProcessors.get(evclass);
       synchronized (registrationIds) {

@@ -4,6 +4,8 @@ import java.lang.reflect.*;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import it.xargon.util.Tools;
+
 abstract class AbstractMarshaller<T> {
    private String name=null;
    private byte[] encName=null;
@@ -14,7 +16,7 @@ abstract class AbstractMarshaller<T> {
    @SuppressWarnings({"unchecked"})
    protected AbstractMarshaller(String name) {
       this.name=Objects.requireNonNull(name);
-      encName=name.getBytes();
+      encName=Tools.getBytes(name);
       affineClass=((Class<T>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0]);
    }
    
