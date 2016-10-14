@@ -24,15 +24,20 @@ public class StreamLink extends EventsSourceImpl {
       
 	private OutputStream ostream=null;
 	private SmartInputStream smartIn=null;
+	private ExecutorService threadPool= null;
       
    public StreamLink(InputStream in, OutputStream out) {this(in,out,null);}
 
    public StreamLink(InputStream in, OutputStream out, ExecutorService threadPool) {
-      super(threadPool);
+      super();
+      this.threadPool=threadPool;
       if (out==null) throw new IllegalArgumentException("OutputStream expected");
       ostream=out;
       smartIn=new SmartInputStream(in, threadPool);
    }
+   
+   @Override
+   protected ExecutorService getThreadPool() {return threadPool;}
 
    public void start() {
       /*smartIn.onEvent(SmartInputStream.STARTED, this::processStarted);

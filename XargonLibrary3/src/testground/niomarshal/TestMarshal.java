@@ -33,7 +33,7 @@ public class TestMarshal {
       Object received=dbridge.unmarshal(buf);
       Debug.stopTimer("Decoded in %d nanos%n");
       
-      //System.out.println(received.toString() + " (" + received.getClass().getName() + ")");
+      System.out.println(received.toString() + " (" + received.getClass().getName() + ")");
    }
    
    private static String generateRandomString(int size) {

@@ -4,8 +4,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.stream.Collectors;
 
+import it.xargon.util.ByteBufferAccumulator;
 import it.xargon.util.Tools;
 
 @SuppressWarnings("rawtypes")
@@ -20,41 +20,30 @@ public class MarCollection extends AbstractMarshaller<Collection> {
    @SuppressWarnings("unchecked")
    @Override
    public ByteBuffer marshal(Collection coll) {   
-      ArrayList<ByteBuffer> elements=new ArrayList<>();
+      //ArrayList<ByteBuffer> elements=new ArrayList<>();
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
       
       //Implementazione concreta della collection
       byte[] className=Tools.getBytes(coll.getClass().getName());
-      ByteBuffer clBuf=alloc(Integer.BYTES + className.length);
-      clBuf.putInt(className.length).put(className).flip();
-      elements.add(clBuf);
+      accumulator.addWithSize(className);
       
       //Numero di elementi nella collection
-      ByteBuffer cntBuf=alloc(Integer.BYTES);
-      cntBuf.putInt(coll.size()).flip();
-      elements.add(cntBuf);
+      accumulator.add(coll.size());
 
       //Serializziamo ogni singolo elemento della collection
       coll.forEach(obj -> {
-         ByteBuffer elemBuf=null;
          if (obj==null) {
-            elemBuf=alloc(1).put((byte)0x00); //prefissato da "0x00" se è null
-            elemBuf.flip();
-            elements.add(elemBuf);
+            //prefissato da "0x00" se è null
+            accumulator.add((byte)0x00);
          } else {
-            elemBuf=alloc(1).put((byte)0xFF); //o da "0xFF" se presente
-            elemBuf.flip();
-            elements.add(elemBuf);
-            elements.add(getDataBridge().marshal(obj));
+            //o da "0xFF" se presente
+            accumulator.add((byte)0xFF);
+            accumulator.add(getDataBridge().marshal(obj));
          }
       });
       
       //Raccogliere tutti i risultati in un solo buffer
-      int totalSize=elements.stream().collect(Collectors.summingInt(ByteBuffer::remaining));
-      ByteBuffer result=alloc(totalSize);
-      elements.forEach(result::put);
-      result.flip();
-      
-      return result;
+      return accumulator.gather();
    }
 
    @SuppressWarnings("unchecked")

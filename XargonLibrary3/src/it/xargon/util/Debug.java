@@ -12,6 +12,11 @@ public class Debug {
    
    private Debug() {}
    
+   public interface Printable {
+      public void printout(String indent, PrintWriter out);
+
+   }
+   
    static {
       stdin=new BufferedReader(new InputStreamReader(System.in));
       stdout=new PrintWriter(System.out, true);

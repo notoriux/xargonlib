@@ -2,8 +2,8 @@ package it.xargon.niomarshal;
 
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.stream.Collectors;
 
+import it.xargon.util.ByteBufferAccumulator; 
 @SuppressWarnings("rawtypes")
 public class MarMap extends AbstractMarshaller<Map> {
    public MarMap() {super("MAP");}
@@ -16,23 +16,13 @@ public class MarMap extends AbstractMarshaller<Map> {
    @SuppressWarnings("unchecked")
    @Override
    public ByteBuffer marshal(Map map) {
-      ArrayList<ByteBuffer> elements=new ArrayList<>();
-      
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
       //Numero di elementi nella mappa
-      ByteBuffer cntBuf=alloc(Integer.BYTES);
-      cntBuf.putInt(map.size()).flip();
-      elements.add(cntBuf);
-      
+      accumulator.add(map.size());
       //Serializziamo ogni singola coppia chiave-valore
-      map.entrySet().forEach(kv -> elements.add(getDataBridge().marshal(kv)));
-     
+      map.entrySet().forEach(kv -> accumulator.add(getDataBridge().marshal(kv)));
       //Raccogliere tutti i risultati in un solo buffer
-      int totalSize=elements.stream().collect(Collectors.summingInt(ByteBuffer::remaining));
-      ByteBuffer result=alloc(totalSize);
-      elements.forEach(result::put);
-      result.flip();
-      
-      return result;
+      return accumulator.gather();
    }
 
    @Override

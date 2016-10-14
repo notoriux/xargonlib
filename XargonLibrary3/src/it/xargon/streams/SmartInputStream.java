@@ -52,13 +52,16 @@ public class SmartInputStream extends EventsSourceImpl {
 
    public SmartInputStream(InputStream in) {this(in,null);}
    public SmartInputStream(InputStream in, ExecutorService threadPool) {
-      super(threadPool);
+      super();
       if (in==null) throw new IllegalArgumentException("InputStream expected");
       istream=new LessBlockingInputStream(in);
       ithreadPool=threadPool;
       running=false;
       buffer=new byte[1];
    }
+   
+   @Override
+   protected ExecutorService getThreadPool() {return ithreadPool;}
 
    public synchronized void start() { //Impediamo che più di un thread possa chiamare start
       if (running) return;

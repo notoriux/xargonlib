@@ -2,9 +2,6 @@ package it.xargon.niomarshal;
 
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.stream.Collectors;
-
 import it.xargon.util.*;
 
 public class MarArray extends AbstractMarshaller<Object> {
@@ -18,21 +15,15 @@ public class MarArray extends AbstractMarshaller<Object> {
    @Override
    @SuppressWarnings("unchecked")
    public ByteBuffer marshal(Object array) {
-      ArrayList<ByteBuffer> accumulator=new ArrayList<>();
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
       
       //Ottenere un marshaller più fedele possibile al component type e annotarlo nell'accumulatore
       AbstractMarshaller<Object> ctmar=(AbstractMarshaller<Object>) getDataBridge().getBestMarshaller(array.getClass().getComponentType());
-      ByteBuffer ctmarBuf=getDataBridge().allocate(Integer.BYTES + ctmar.getEncName().length);
-      ctmarBuf.putInt(ctmar.getEncName().length).put(ctmar.getEncName());
-      ctmarBuf.flip();
-      accumulator.add(ctmarBuf);
+      accumulator.addWithSize(ctmar.getEncName());
 
       //Ottenere il numero di elementi e annotarli nell'accumulatore
       int cnt=Array.getLength(array);
-      ByteBuffer cntBuf=getDataBridge().allocate(Integer.BYTES);
-      cntBuf.putInt(cnt);
-      cntBuf.flip();
-      accumulator.add(cntBuf);
+      accumulator.add(cnt);
       
       //Passare ogni elemento dell'array direttamente nell'unmarshaller
       //segnalando la presenza con un tag "FF" e null con "00"
@@ -40,30 +31,18 @@ public class MarArray extends AbstractMarshaller<Object> {
          Object element=Array.get(array, index);
          if (element==null) {
             //il contenuto di questo indice è NULL: inseriamo un indicatore byte "00"
-            ByteBuffer elemNull=alloc(1).put((byte)0x00);
-            elemNull.flip();
-            accumulator.add(elemNull);
+            accumulator.add((byte)0x00);
          } else {
             //il contenuto di questo indice è presente: inseriamo un indicatore byte "FF" seguito
             //dalla serializzazione diretta senza passare dal databridge
-            ByteBuffer elemNull=alloc(1).put((byte)0xFF);
-            elemNull.flip();
-            accumulator.add(elemNull);
+            accumulator.add((byte)0xFF);
             ByteBuffer elemBuf=ctmar.marshalObject(element);
-            ByteBuffer elemLen=alloc(Integer.BYTES).putInt(elemBuf.limit());
-            elemLen.flip();
-            accumulator.add(elemLen);
-            accumulator.add(elemBuf);
+            accumulator.addWithSize(elemBuf);
          }
       }
       
       //Raccogliere tutti i risultati in un solo buffer
-      int totalSize=accumulator.stream().collect(Collectors.summingInt(ByteBuffer::remaining));
-      ByteBuffer result=alloc(totalSize);
-      accumulator.forEach(result::put);
-      result.flip();
-      
-      return result;
+      return accumulator.gather();
    }
    
    @Override

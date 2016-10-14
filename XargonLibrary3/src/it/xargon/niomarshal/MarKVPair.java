@@ -3,7 +3,8 @@ package it.xargon.niomarshal;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
+
+import it.xargon.util.ByteBufferAccumulator;
 
 @SuppressWarnings("rawtypes")
 public class MarKVPair extends AbstractMarshaller<Map.Entry> {
@@ -31,29 +32,20 @@ public class MarKVPair extends AbstractMarshaller<Map.Entry> {
 
    @Override
    public ByteBuffer marshal(Entry mapentry) {
-      ArrayList<ByteBuffer> elements=new ArrayList<>();
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
       
       if (mapentry.getKey()==null) throw new IllegalArgumentException("Null-key not allowed");
-      elements.add(getDataBridge().marshal(mapentry.getKey()));
+      accumulator.add(getDataBridge().marshal(mapentry.getKey()));
 
       if (mapentry.getValue()==null) { //Il valore è null (può succedere)
-         ByteBuffer flag=alloc(1).put((byte)0x00);
-         flag.flip();
-         elements.add(flag);
+         accumulator.add((byte)0x00);
       } else { //Il valore è presente
-         ByteBuffer flag=alloc(1).put((byte)0xFF);
-         flag.flip();
-         elements.add(flag);
-         elements.add(getDataBridge().marshal(mapentry.getValue()));
+         accumulator.add((byte)0xFF);
+         accumulator.add(getDataBridge().marshal(mapentry.getValue()));
       }
       
       //Raccogliere tutti i risultati in un solo buffer
-      int totalSize=elements.stream().collect(Collectors.summingInt(ByteBuffer::remaining));
-      ByteBuffer result=alloc(totalSize);
-      elements.forEach(result::put);
-      result.flip();
-      
-      return result;
+      return accumulator.gather();
    }
 
    @Override
