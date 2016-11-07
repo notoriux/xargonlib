@@ -2,6 +2,7 @@ package it.xargon.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 
 import it.xargon.events.*;
 
@@ -12,8 +13,8 @@ public class StreamFilter extends EventsSourceImpl {
    }
    
    @FunctionalInterface @Event
-   public interface Matched {public void matched(FilterContents subst);}
-   public static Class<Matched> MATCHED=Matched.class;
+   public static interface Matched {public void with(FilterContents subst);}
+   public final static Class<Matched> MATCHED=Matched.class;
    
    public final static byte[] NODATA=new byte[0];
    private ByteArrayOutputStream buf=null;
@@ -21,7 +22,7 @@ public class StreamFilter extends EventsSourceImpl {
    private int matched=0;
    private FilterContentsImpl subst=null;
    
-   private class MonoFilter implements Matched {
+   private class MonoFilter {
       private byte[] res=null;
 
       public MonoFilter(String result) {
@@ -35,6 +36,7 @@ public class StreamFilter extends EventsSourceImpl {
          }
       }
 
+      @OnEvent(Matched.class)
       public void matched(FilterContents isubst) {isubst.setSubstitute(res);}
    }
    
@@ -77,7 +79,7 @@ public class StreamFilter extends EventsSourceImpl {
       if ((original==null) || (original.length()==0))
          throw new IllegalArgumentException("Original string must have at least one character");
       StreamFilter res=new StreamFilter(original.getBytes());
-      res.onEvent(MATCHED, res.new MonoFilter(replace));
+      res.bindEvents(res.new MonoFilter(replace));
       return res;
    }
 
@@ -85,17 +87,21 @@ public class StreamFilter extends EventsSourceImpl {
       if ((original==null) || (original.length==0))
          throw new IllegalArgumentException("Original string must have at least one character");
       StreamFilter res=new StreamFilter(original);
-      res.onEvent(MATCHED, res.new MonoFilter(replace));
+      res.bindEvents(res.new MonoFilter(replace));
       return res;
    }
 
    public StreamFilter(byte[] pattern) {
+      super();
       if (pattern==null) throw new NullPointerException("Pattern must not be null");
       buf=new ByteArrayOutputStream();
       pat=pattern;
       subst=new FilterContentsImpl(pat);
    }
 
+   @Override
+   protected ExecutorService getThreadPool() {return null;}
+   
    public byte[] getPattern() {
       byte[] res=new byte[pat.length];
       System.arraycopy(pat,0,res,0,pat.length);
@@ -149,7 +155,7 @@ public class StreamFilter extends EventsSourceImpl {
       matched++;
       if (matched==pat.length) {
          matched=0;
-         raise(MATCHED).matched(subst);
+         raise(MATCHED).with(subst);
          return (byte[])(subst.getSubstitute()).clone();
       }
       return NODATA;

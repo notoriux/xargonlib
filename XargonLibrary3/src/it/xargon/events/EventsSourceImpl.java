@@ -135,7 +135,7 @@ public abstract class EventsSourceImpl implements EventsSource {
       }
    }
    
-   protected ExecutorService getThreadPool() {return null;}
+   protected abstract ExecutorService getThreadPool();
    
    protected ExceptionReaction handleUncaughtException(Object sink, Class<?> event, Throwable tr) {
       tr.printStackTrace(Debug.stderr);return ExceptionReaction.UNREGISTER;

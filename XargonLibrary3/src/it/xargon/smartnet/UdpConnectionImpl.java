@@ -25,6 +25,9 @@ class UdpConnectionImpl extends EventsSourceImpl implements UdpConnection {
       ibufsize=bufsize;
    }
 
+   @Override
+   protected ExecutorService getThreadPool() {return ithreadPool;}
+   
    public synchronized void start() throws IOException {
       timeToClose=false;
       startlock=new BooleanLatch();

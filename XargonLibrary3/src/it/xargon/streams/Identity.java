@@ -1,7 +1,10 @@
 package it.xargon.streams;
 
 import java.io.*;
-import it.xargon.util.*;
+import it.xargon.util.Tools;
+import it.xargon.util.Bitwise;
+import it.xargon.util.Debug;
+import it.xargon.util.Debug.Printable;
 
 public class Identity implements Streamable, Printable {
    private byte[] publicRemoteKey=null;
@@ -61,16 +64,12 @@ public class Identity implements Streamable, Printable {
       if (privateLocalKey!=null) ostream.write(privateLocalKey);
    }
 
-   public void printout(String indent, PrintWriter out) {
-      out.print(indent);out.println("ENCODED IDENTITY");
-      out.print(indent);out.print("  Public remote key: [");
-      Debug.dumpBytes(publicRemoteKey, out);
-      out.println("]");
-      out.print(indent);out.print("  Public local key: [");
-      Debug.dumpBytes(publicLocalKey, out);
-      out.println("]");
-      out.print(indent);out.print("  Privare local key: [");
-      Debug.dumpBytes(privateLocalKey, out);
-      out.println("]");
+   public String toString(String indent) {
+      StringBuilder sb=new StringBuilder();
+      sb.append(indent).append("ENCODED IDENTITY\n");
+      sb.append(indent).append("  Public remote key: [").append(Debug.dumpBytes(publicRemoteKey)).append("]\n");
+      sb.append(indent).append("  Public local key: [").append(Debug.dumpBytes(publicLocalKey)).append("]\n");
+      sb.append(indent).append("  Private local key: [").append(Debug.dumpBytes(privateLocalKey)).append("]\n");
+      return sb.toString();
    }
 }

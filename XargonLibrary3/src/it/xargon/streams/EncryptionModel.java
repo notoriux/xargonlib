@@ -1,6 +1,7 @@
 package it.xargon.streams;
 
 import it.xargon.util.*;
+import it.xargon.util.Debug.Printable;
 
 import java.io.*;
 import java.security.*;
@@ -139,14 +140,16 @@ public class EncryptionModel implements Streamable, Printable {
       return result;
    }
 
-   public void printout(String indent, PrintWriter out) {
-      out.print(indent);out.print("KeyPair: ");out.print(ikeyPairAlgorithm);
-      out.print(" (");out.print(ikeyPairSize.intValue());out.println(" bits)");
-      out.print(indent);out.print("Asymetric Cipher: ");out.println(iasyCipherAlgorithm);
-      out.print(indent);out.print("SecretKey: "); out.print(isecretKeyAlgorithm);
-      out.print(" (");out.print(isecretKeySize.intValue());out.println(" bits)");
-      out.print(indent);out.print("Symetric Cipher: ");out.println(isymCipherAlgorithm);
-      out.print(indent);out.println((sealed?"Sealed":"Editable") + " Encryption Model");
+   public String toString(String indent) {
+      StringBuilder sb=new StringBuilder();
+      sb.append(indent).append("KeyPair: ").append(ikeyPairAlgorithm);
+      sb.append(" (").append(ikeyPairSize.intValue()).append(" bits)\n");
+      sb.append(indent).append("Asymetric Cipher: ").append(iasyCipherAlgorithm).append("\n");
+      sb.append(indent).append("SecretKey: ").append(isecretKeyAlgorithm);
+      sb.append(" (").append(isecretKeySize.intValue()).append(" bits)\n");
+      sb.append(indent).append("Symetric Cipher: ").append(isymCipherAlgorithm).append("\n");
+      sb.append(indent).append((sealed?"Sealed":"Editable") + " Encryption Model\n");
+      return sb.toString();
    }
    
    private void checkComplete() {if (!isComplete()) throw new IllegalStateException();}

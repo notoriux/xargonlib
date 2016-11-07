@@ -43,7 +43,7 @@ public class DataBridge {
          tmp=AbstractMarshaller.class.getDeclaredField("dataBridge");
          tmp.setAccessible(true);
       } catch (NoSuchFieldException | SecurityException e) {
-         e.printStackTrace();
+         throw new IllegalStateException(e); //This piece of code must always succeed, otherwise fail class loading
       }
       dataBridgeField=tmp;
    }
@@ -54,7 +54,7 @@ public class DataBridge {
       try {
          Constructor<? extends AbstractMarshaller<?>> marConstructor=marshallerClass.getConstructor();
          newMarshaller=marConstructor.newInstance();
-         dataBridgeField.set(newMarshaller, this);
+         dataBridgeField.set(newMarshaller, this); //INJECTION
       } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
          throw new IllegalArgumentException(e);
       }

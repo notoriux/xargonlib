@@ -3,10 +3,12 @@ package it.xargon.nioxmp;
 import java.util.EnumSet;
 
 public enum XmpMessageType {
-   EVENT((byte)1),
-   REQUEST((byte)2),
-   ANSWER((byte)3),
-   CLOSING((byte)4);
+   NEWSESSION((byte)0),
+   RESTORE((byte)1),
+   ENDSESSION((byte)2),
+   EVENT((byte)3),
+   REQUEST((byte)4),
+   ANSWER((byte)5);
    
    private byte typeId;
    private XmpMessageType(byte itypeId) {typeId=itypeId;}

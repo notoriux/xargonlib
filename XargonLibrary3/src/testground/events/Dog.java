@@ -1,5 +1,6 @@
 package testground.events;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 
 import it.xargon.events.Event;
@@ -24,6 +25,9 @@ public class Dog extends EventsSourceImpl {
       super();
       this.name=name;
    }
+   
+   @Override
+   protected ExecutorService getThreadPool() {return null;}
 
    public String getName() {return name;}
    

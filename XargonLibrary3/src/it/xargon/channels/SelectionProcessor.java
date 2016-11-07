@@ -2,7 +2,8 @@ package it.xargon.channels;
 
 import java.nio.channels.SelectionKey;
 
+@FunctionalInterface
 public interface SelectionProcessor {
-   public void processKey(SelectorWorker worker, SelectionKey key);
+   public Runnable processKey(SelectorWorker worker, SelectionKey key);
 }
 

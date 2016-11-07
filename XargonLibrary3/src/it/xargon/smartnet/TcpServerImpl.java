@@ -26,7 +26,7 @@ class TcpServerImpl extends EventsSourceImpl implements TcpServer {
    private Object lock=null;
 
    public TcpServerImpl(SmartnetFactory factory, InetSocketAddress endPoint) {
-      super(factory.getThreadPool());
+      super();
       ifactory=factory;
       ithreadPool=factory.getThreadPool();
       iEndPoint=endPoint;
@@ -35,6 +35,9 @@ class TcpServerImpl extends EventsSourceImpl implements TcpServer {
       killconnections=false;
       timeToClose=false;
    }
+   
+   @Override
+   protected ExecutorService getThreadPool() {return ithreadPool;}
 
    public synchronized void start() throws IOException {
       if (running) {throw new IOException("Already started");}

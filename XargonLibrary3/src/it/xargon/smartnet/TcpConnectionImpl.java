@@ -19,7 +19,7 @@ class TcpConnectionImpl extends EventsSourceImpl implements TcpConnection {
    private int origSoTimeout=0;
 
    public TcpConnectionImpl(SmartnetFactory factory, InetSocketAddress remoteaddr, InetSocketAddress localaddr) {
-      super(factory.getThreadPool());
+      super();
       ifactory=factory;
       if (remoteaddr==null) throw new IllegalArgumentException("Unexpected null argument");
       ithreadPool=factory.getThreadPool();
@@ -30,7 +30,7 @@ class TcpConnectionImpl extends EventsSourceImpl implements TcpConnection {
    }
    
    public TcpConnectionImpl(SmartnetFactory factory, TcpServerImpl parent, Socket sck) throws IOException {
-      super(factory.getThreadPool());
+      super();
       ifactory=factory;
       if (sck==null) throw new IllegalArgumentException("Unexpected null argument");
       if (!sck.isConnected()) throw new IllegalArgumentException("The provided socket is not connected");
@@ -40,6 +40,9 @@ class TcpConnectionImpl extends EventsSourceImpl implements TcpConnection {
       localSockAddr=(InetSocketAddress)iSock.getLocalSocketAddress();
       remoteSockAddr=(InetSocketAddress)iSock.getRemoteSocketAddress();
    }
+   
+   @Override
+   protected ExecutorService getThreadPool() {return ifactory.getThreadPool();}
    
    private synchronized void commonStart() throws IOException {      
       if (iSock==null)  {

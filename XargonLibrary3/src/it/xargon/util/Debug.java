@@ -13,8 +13,7 @@ public class Debug {
    private Debug() {}
    
    public interface Printable {
-      public void printout(String indent, PrintWriter out);
-
+      public String toString(String indent);
    }
    
    static {
@@ -92,24 +91,27 @@ public class Debug {
       out.println();
    }
       
-   public static void dumpBytes(byte[] data, PrintWriter out) {
-      if (data==null) return;
-      dumpBytes(data, 0, data.length, out);
+   public static String dumpBytes(byte[] data) {
+      if (data==null) return "";
+      return dumpBytes(data, 0, data.length);
    }
 
-   public static void dumpBytes(byte[] data, int offset, int length, PrintWriter out) {
-      if (data==null) return;
-      for(int cnt=offset;cnt<offset+length;cnt++) {
-         out.printf("%1$02X ", data[cnt]);
+   public static String dumpBytes(byte[] data, int offset, int length) {
+      if (data==null) return "";
+      try (Formatter fmt=new Formatter()) {
+         for(int cnt=offset;cnt<offset+length;cnt++) fmt.format("%1$02X ", data[cnt]);
+         return fmt.toString();
       }
-      out.flush();
    }
    
-   public static void dumpBytesFormatted(String indent, byte[] data, PrintWriter out) {
-      dumpBytesFormatted(indent, data, 0, data.length, out);
+   public static String dumpBytesFormatted(String indent, byte[] data) {
+      return dumpBytesFormatted(indent, data, 0, data.length);
    }
    
-   public static void dumpBufferFormatted(String indent, ByteBuffer buffer, PrintWriter out) {
+   public static String dumpBufferFormatted(String indent, ByteBuffer buffer) {
+      StringWriter swr=new StringWriter();
+      PrintWriter out=new PrintWriter(swr, true);
+      
       out.printf("hasArray: %1$b - position: %2$d - limit: %3$d - capacity: %4$d%n", buffer.hasArray(), buffer.position(), buffer.limit(), buffer.capacity());
       
       int column=0;
@@ -155,9 +157,15 @@ public class Debug {
          dumpDisp(disp, column-1, out);
          out.println();
       }
+      
+      out.flush();
+      
+      return swr.toString();
    }
 
-   public static void dumpBytesFormatted(String indent, byte[] data, int offset, int length, PrintWriter out) {
+   public static String dumpBytesFormatted(String indent, byte[] data, int offset, int length) {
+      StringWriter swr=new StringWriter();
+      PrintWriter out=new PrintWriter(swr, true);
       int column=0;
       char[] disp=new char[16];
       
@@ -180,6 +188,10 @@ public class Debug {
          dumpDisp(disp, column-1, out);
          out.println();
       }
+      
+      out.flush();
+      
+      return swr.toString();
    }
    
    private static void dumpDisp(char[] disp, int cnt, PrintWriter out) {

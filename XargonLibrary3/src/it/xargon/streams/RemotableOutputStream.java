@@ -1,6 +1,7 @@
 package it.xargon.streams;
 
 import java.io.*;
+import java.util.concurrent.ExecutorService;
 
 import it.xargon.events.*;
 
@@ -9,10 +10,14 @@ public class RemotableOutputStream extends EventsSourceImpl implements IRemoteOu
    private OutputStream _os=null;
    
    public RemotableOutputStream(OutputStream os) {
+      super();
       if (os==null) throw new NullPointerException();
       lock=new Object();
       _os=os;
    }
+   
+   @Override
+   protected ExecutorService getThreadPool() {return null;}
    
    public boolean isOpen() {
       synchronized (lock) {
