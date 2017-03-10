@@ -28,7 +28,7 @@ public class Parser {
    
    public void reset() {
       expect=EXPECTING.NAMELEN;
-      buffer=dataBridge.allocate(Integer.SIZE);
+      buffer=dataBridge.allocate(Integer.BYTES);
       accumulator.clear();
    }
 
@@ -49,7 +49,7 @@ public class Parser {
             buffer.put(b);
             if (!buffer.hasRemaining()) {
                accumulator.addWithSize(buffer, true);
-               buffer=dataBridge.allocate(Integer.SIZE);
+               buffer=dataBridge.allocate(Integer.BYTES);
                expect=EXPECTING.CONTENTLEN;
             }
             break;

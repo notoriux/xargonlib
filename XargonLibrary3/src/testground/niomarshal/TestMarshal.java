@@ -21,7 +21,7 @@ public class TestMarshal {
       
       for(int i=0;i<1;i++) {
          ArrayList<String> element=new ArrayList<>();
-         for(int j=0;j<2;j++) element.add(generateRandomString(1024));
+         for(int j=0;j<2;j++) element.add(generateRandomString(10));
          bigObject.add(element);
       }
       
@@ -29,11 +29,19 @@ public class TestMarshal {
       ByteBuffer buf=dbridge.marshal(bigObject);
       Debug.stopTimer("Encoded in %d nanos%n");
       
+      ByteBuffer buf2=buf.duplicate();
+      
       Debug.startTimer();
       Object received=dbridge.unmarshal(buf);
       Debug.stopTimer("Decoded in %d nanos%n");
       
       System.out.println(received.toString() + " (" + received.getClass().getName() + ")");
+      
+      Parser dbParser=new Parser(dbridge);
+      
+      ByteBuffer result[]=dbParser.feed(buf2.duplicate(), buf2.duplicate(), buf2.duplicate());
+      
+      System.out.println(result.length);
    }
    
    private static String generateRandomString(int size) {
