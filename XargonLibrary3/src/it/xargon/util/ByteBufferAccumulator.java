@@ -81,4 +81,8 @@ public class ByteBufferAccumulator {
       result.flip();
       return result;
    }
+   
+   public void clear() {
+      accumulator.clear();
+   }
 }

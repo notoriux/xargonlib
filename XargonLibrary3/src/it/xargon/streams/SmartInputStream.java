@@ -13,7 +13,7 @@ public class SmartInputStream extends EventsSourceImpl {
    public final static Class<DataArrived> DATAARRIVED=DataArrived.class;
    
    @FunctionalInterface @Event
-   public interface StreamException {public void with(StreamErrorReaction reaction);}
+   public interface StreamException {public boolean with(Exception ex);}
    public final static Class<StreamException> STREAMEXCEPTION=StreamException.class;
 
    @FunctionalInterface @Event
@@ -167,10 +167,9 @@ public class SmartInputStream extends EventsSourceImpl {
             }
             else timeToClose=true;
          } catch (IOException ex) {
-            if (!timeToClose) {
-               StreamErrorReaction ex2=new StreamErrorReaction(ex);               
-               raise(STREAMEXCEPTION).with(ex2);
-               if (ex2.stopRequested()) timeToClose=true;
+            if (!timeToClose) {              
+               Boolean stopRequested=raise(STREAMEXCEPTION).with(ex);
+               if (stopRequested!=null && stopRequested) timeToClose=true;
             }
          }
       } while (!timeToClose);

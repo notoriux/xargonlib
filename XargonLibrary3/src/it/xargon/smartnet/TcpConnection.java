@@ -8,15 +8,15 @@ import it.xargon.streams.*;
 
 public interface TcpConnection extends EventsSource {
    @FunctionalInterface @Event
-   public interface Connected {public void raise(TcpConnection conn);}
+   public interface Connected extends Runnable {}
    public static Class<Connected> CONNECTED=Connected.class;
    
    @FunctionalInterface @Event
-   public interface Disconnected {public void raise(TcpConnection conn);}
+   public interface Disconnected extends Runnable {}
    public static Class<Disconnected> DISCONNECTED=Disconnected.class;
    
    @FunctionalInterface @Event
-   public interface DataArrived {public void raise(TcpConnection conn, byte[] data);}
+   public interface DataArrived {public void with(byte[] data);}
    public static Class<DataArrived> DATAARRIVED=DataArrived.class;
    
    public InetSocketAddress getLocalAddress();

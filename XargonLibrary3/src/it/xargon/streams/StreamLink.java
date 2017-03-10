@@ -11,7 +11,7 @@ public class StreamLink extends EventsSourceImpl {
    public final static Class<DataStreamed> DATASTREAMED=DataStreamed.class;
    
    @FunctionalInterface @Event
-   public interface StreamException {public void with(StreamErrorReaction ex);}
+   public interface StreamException {public boolean with(Exception ex);}
    public final static Class<StreamException> STREAMEXCEPTION=StreamException.class;
    
    @FunctionalInterface @Event
@@ -66,9 +66,8 @@ public class StreamLink extends EventsSourceImpl {
          ostream.write(data,0,length);
          ostream.flush();
       } catch (IOException ex) {
-         StreamErrorReaction ex2=new StreamErrorReaction(ex);
-         raise(STREAMEXCEPTION).with(ex2);
-         if (ex2.stopRequested()) try {smartIn.stop().close();} catch (IOException e) {}
+         Boolean stopRequested=raise(STREAMEXCEPTION).with(ex);
+         if (stopRequested!=null && stopRequested) try {smartIn.stop().close();} catch (IOException e) {}
       }
       
       raise(DATASTREAMED).with(data, length);

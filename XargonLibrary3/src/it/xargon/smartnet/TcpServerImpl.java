@@ -85,14 +85,14 @@ class TcpServerImpl extends EventsSourceImpl implements TcpServer {
       //procedura sul server per consentire la pulizia dei riferimenti, e per
       //avvisare tutti i listener sul server
       synchronized (lock) {connections.remove(conn);}
-      raise(REMOVED).raise(this, conn);
+      raise(REMOVED).with(conn);
    }
 
    private void internalRun() {
       serverThread=Thread.currentThread();
       running=true;
       Thread.currentThread().setName("TcpServer - " + iEndPoint.toString());
-      raise(STARTED).raise(this);
+      raise(STARTED);
       startlock.open();
       while (!timeToClose) {
          try {
@@ -104,7 +104,7 @@ class TcpServerImpl extends EventsSourceImpl implements TcpServer {
             //inseriscano i propri listener anche sulla connessione.
             //A questo punto la responsabilità dell'avvio del thread
             //di gestione è nelle mani dei listener su questo server
-            raise(BUILD).raise(this, iconn);
+            raise(BUILD).with(iconn);
             
             //Controlliamo che la connection sia stata avviata correttamente
             //se così non fosse, chiudiamo il socket e solleviamo un evento
@@ -112,7 +112,7 @@ class TcpServerImpl extends EventsSourceImpl implements TcpServer {
             
             if (!iconn.isRunning()) {
                csock.close();
-               raise(SERVEREXCEPTION).raise(this, new SmartnetException("TcpConnection was not started before returning from the \"build\" event"));
+               raise(SERVEREXCEPTION).with(new SmartnetException("TcpConnection was not started before returning from the \"build\" event"));
             } else {
                synchronized (lock) {connections.add(iconn);}
             }
@@ -120,7 +120,7 @@ class TcpServerImpl extends EventsSourceImpl implements TcpServer {
             //Nulla da fare. Verifica timeToClose e riprova "accept"*/
          } catch(IOException ex) {
             //Errore durante l'accettazione: notifichiamo il listener
-            raise(SERVEREXCEPTION).raise(this, ex);
+            raise(SERVEREXCEPTION).with(ex);
             //Forziamo la chiusura del socket server
             try {iServ.close();} catch (IOException ex2) {}
          }
@@ -136,7 +136,7 @@ class TcpServerImpl extends EventsSourceImpl implements TcpServer {
          iServ.close();
       } catch(IOException ex) {
          //Errore durante la chiusura: notifichiamo il listener
-         raise(SERVEREXCEPTION).raise(this, ex);
+         raise(SERVEREXCEPTION).with(ex);
       }
 
       //Se è stato richiesto un arresto completo...
@@ -150,12 +150,12 @@ class TcpServerImpl extends EventsSourceImpl implements TcpServer {
             try {
                if (iconn.isConnected()) iconn.close();
             } catch (IOException ex) {
-               raise(SERVEREXCEPTION).raise(this, ex);
+               raise(SERVEREXCEPTION).with(ex);
             }
          }
       }
 
-      raise(STOPPED).raise(this);
+      raise(STOPPED);
       stoplock.open();
       serverThread=null;
    }

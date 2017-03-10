@@ -8,6 +8,8 @@ import java.io.*;
 import java.util.concurrent.*;
 
 class TcpConnectionImpl extends EventsSourceImpl implements TcpConnection {
+   private final static int DEFAULT_SOTIMEOUT=10;
+   
    private Socket iSock=null;
    private InetSocketAddress localSockAddr=null;
    private InetSocketAddress remoteSockAddr=null;
@@ -55,41 +57,45 @@ class TcpConnectionImpl extends EventsSourceImpl implements TcpConnection {
       iSock.setTcpNoDelay(true);
       iSock.setKeepAlive(true);
       origSoTimeout=iSock.getSoTimeout();
-      iSock.setSoTimeout(10);
+      iSock.setSoTimeout(DEFAULT_SOTIMEOUT);
       
       sockOutputStream=new ImmediateOutputStream(iSock.getOutputStream());
       smartIn=new SmartInputStream(iSock.getInputStream(), ithreadPool);
-            
-      smartIn.onEvent(SmartInputStream.STARTED, () -> {raise(CONNECTED).raise(this);});
-      
-      smartIn.onEvent(SmartInputStream.STOPPED, () -> {
-         try {iSock.close();} catch (IOException ex) {}
-         raise(DISCONNECTED).raise(this);
-         smartIn.unregisterAll();
-         if (parentServer!=null) parentServer.connectionCleanup(this);
-      });
-      
-      smartIn.onEvent(SmartInputStream.SUSPENDED, () -> {
-         try {iSock.setSoTimeout(origSoTimeout);} catch (IOException ignored) {}
-      });
-      
-      smartIn.onEvent(SmartInputStream.RESTORED, () -> {
-         try {iSock.setSoTimeout(10);} catch (IOException ignored) {}
-      });
-      
-      smartIn.onEvent(SmartInputStream.DATAARRIVED, (data, length) -> {
-         byte[] sdata=new byte[length];
-         System.arraycopy(data,0,sdata,0,length);
-         raise(TcpConnection.DATAARRIVED).raise(this, data);
-      });
+      smartIn.bindEvents(this);
+   }
+   
+   @OnEvent(SmartInputStream.Started.class)
+   private void smartISStarted() {raise(CONNECTED);}
+   
+   @OnEvent(SmartInputStream.Stopped.class)
+   private void smartISStopped() {
+      try {iSock.close();} catch (IOException ex) {}
+      raise(DISCONNECTED);
+      smartIn.unregisterAll();
+      if (parentServer!=null) parentServer.connectionCleanup(this);
+   }
+   
+   @OnEvent(SmartInputStream.Suspended.class)
+   private void smartISSuspended() {
+      try {iSock.setSoTimeout(origSoTimeout);} catch (IOException ignored) {}
+   }
+   
+   @OnEvent(SmartInputStream.Restored.class)
+   private void smartISRestored() {
+      try {iSock.setSoTimeout(DEFAULT_SOTIMEOUT);} catch (IOException ignored) {}
+   }
+   
+   @OnEvent(SmartInputStream.DataArrived.class)
+   private void smartISDataArrived(byte[] data, int length) {
+      byte[] sdata=new byte[length];
+      System.arraycopy(data,0,sdata,0,length);
+      raise(TcpConnection.DATAARRIVED).with(data);
+   }
 
-      smartIn.onEvent(SmartInputStream.STREAMEXCEPTION, (reaction) -> {
-         if (reaction.getException() instanceof SocketTimeoutException) {
-            reaction.dontStop(); //lo stream non deve fermarsi!
-            //raiseEvent.doParallelJobs(TcpConnectionImpl.this);
-            return;
-         }
-      });
+   @OnEvent(SmartInputStream.StreamException.class)
+   private Boolean smartISException(Exception ex) {
+      if (ex instanceof SocketTimeoutException) return false; //lo stream non deve fermarsi!
+      return true;
    }
 
    public synchronized void start() throws IOException {

@@ -3,6 +3,7 @@ package it.xargon.events;
 import it.xargon.events.EventsSource.ExceptionReaction;
 
 import java.lang.reflect.*;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 class InvocationDispatcher {
@@ -11,7 +12,20 @@ class InvocationDispatcher {
    private Object[] iargs=null;
    private EventsSourceImpl iowner=null;
    private volatile boolean invoked=false;
-   private Object chainedResult=null;
+   
+   public static ThreadLocal<LinkedList<EventsSource>> currentSources=new ThreadLocal<LinkedList<EventsSource>>() {
+      @Override
+      protected LinkedList<EventsSource> initialValue() {
+         return new LinkedList<>();
+      }
+   };
+   
+   public static ThreadLocal<LinkedList<LinkedList<Object>>> eventResults=new ThreadLocal<LinkedList<LinkedList<Object>>>() {
+      @Override
+      protected LinkedList<LinkedList<Object>> initialValue() {
+         return new LinkedList<>();
+      }
+   };
    
    public InvocationDispatcher(EventsSourceImpl owner, Object[] targets, Method evmeth, Object[] args) {
       iowner=owner;
@@ -22,32 +36,50 @@ class InvocationDispatcher {
    
    public synchronized boolean isInvoked() {return invoked;}
    
-   public synchronized Object getChainedResult() {
-      if (!invoked) throw new IllegalStateException("Dispatcher not invoked");
-      return chainedResult;
-   }
-   
    public synchronized void checkInvoked() {
       if (invoked) throw new IllegalStateException("Dispatcher already invoked");
       invoked=true;      
    }
    
-   public void simpleInvocation() {
+   public Object simpleInvocation() {
       checkInvoked();
- 
-      for(Object target:itargets) {
-         try {InvocationDispatcher.dispatch(imeth, target, iargs);}
-         catch (Throwable tr) {
-            ExceptionReaction reaction=iowner.handleUncaughtException(target, imeth.getDeclaringClass(), tr);
-            switch (reaction) {
-               case CONTINUE: continue;
-               case STOP: return;
-               case UNREGISTER: //implica CONTINUE
-                  iowner.internal_unregister(imeth.getDeclaringClass(), target);
-                  continue;
+      Object result=null;
+      
+      //Prepararsi a raccogliere tutti gli eventuali risultati da parte dei listener
+      LinkedList<Object> allResults=new LinkedList<>();
+      eventResults.get().addLast(allResults);
+      
+      try {
+         for(Object target:itargets) {
+            try {
+               result=null;
+               result=InvocationDispatcher.dispatch(iowner, imeth, target, iargs);
+               //In questo modo tutti i listener possono accedere all'elenco dei
+               //risultati degli altri listener per lo stesso evento
+               if (result!=null) {
+                  //Se il risultato è già presente, ne tiene una sola copia (ma la mette per ultima)
+                  if (allResults.contains(result)) allResults.remove(result);
+                  allResults.addLast(result);
+               }
+            } catch (Throwable tr) {
+               ExceptionReaction reaction=iowner.handleUncaughtException(target, imeth.getDeclaringClass(), tr);
+               switch (reaction) {
+                  case CONTINUE: continue;
+                  case STOP: return null;
+                  case UNREGISTER: //implica CONTINUE
+                     iowner.internal_unregister(imeth.getDeclaringClass(), target);
+                     continue;
+               }
             }
          }
-      } 
+         
+         //Il risultato della chiamata è l'ultimo inserito nell'elenco dei risultati
+         //(o null se non vi sono stati risultati)
+         Object[] results=allResults.toArray();
+         return (results==null || results.length==0)?null:results[results.length-1];
+      } finally {
+         eventResults.get().remove(allResults); //Finita la festa, si mette tutto in ordine
+      }
    }
    
    public void parallelInvocation(ExecutorService threadPool) {
@@ -55,7 +87,7 @@ class InvocationDispatcher {
 
       for(Object target:itargets) {
          Runnable task=()->{
-            try {InvocationDispatcher.dispatch(imeth, target, iargs);}
+            try {InvocationDispatcher.dispatch(iowner, imeth, target, iargs);}
             catch (Throwable tr) {
                ExceptionReaction reaction=iowner.handleUncaughtException(target, imeth.getDeclaringClass(), tr);
                switch (reaction) {
@@ -91,13 +123,14 @@ class InvocationDispatcher {
    
    public Object chainedInvocation(boolean onFirst) {
       checkInvoked();
+      Object chainedResult=null;
 
       Object[] _args=new Object[iargs.length];
       System.arraycopy(iargs, 0, _args, 0, iargs.length);
 
       for(Object target:itargets) {
          try {
-            chainedResult=InvocationDispatcher.dispatch(imeth, target, _args);
+            chainedResult=InvocationDispatcher.dispatch(iowner, imeth, target, _args);
             if (onFirst) _args[0]=chainedResult; else _args[_args.length-1]=chainedResult;
          } catch (Throwable tr) {
             ExceptionReaction reaction=iowner.handleUncaughtException(target, imeth.getDeclaringClass(), tr);
@@ -120,17 +153,23 @@ class InvocationDispatcher {
       return chainedResult;
    }
    
-   private static Object dispatch(Method evmeth, Object target, Object[] args) throws Throwable {
-      Object result=null;
-      if (target instanceof InvocationHandler) {
-         InvocationHandler ih=InvocationHandler.class.cast(target);
-         result=ih.invoke(target, evmeth, args);
-      } else if (Proxy.isProxyClass(target.getClass())) {
-         InvocationHandler ih=Proxy.getInvocationHandler(target);
-         result=ih.invoke(target, evmeth, args);
-      } else {
-         result=evmeth.invoke(target, args);
+   private static Object dispatch(EventsSourceImpl evSource, Method evmeth, Object target, Object[] args) throws Throwable {
+      try {
+         currentSources.get().addFirst(evSource);
+         
+         Object result=null;
+         if (target instanceof InvocationHandler) {
+            InvocationHandler ih=InvocationHandler.class.cast(target);
+            result=ih.invoke(target, evmeth, args);
+         } else if (Proxy.isProxyClass(target.getClass())) {
+            InvocationHandler ih=Proxy.getInvocationHandler(target);
+            result=ih.invoke(target, evmeth, args);
+         } else {
+            result=evmeth.invoke(target, args);
+         }
+         return result;
+      } finally {
+         currentSources.get().removeFirst();
       }
-      return result;
    }
 }

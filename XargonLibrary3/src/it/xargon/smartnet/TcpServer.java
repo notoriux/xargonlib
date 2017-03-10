@@ -8,23 +8,23 @@ import it.xargon.events.*;
 
 public interface TcpServer extends EventsSource {   
    @FunctionalInterface @Event
-   public interface Started {public void raise(TcpServer serv);}
+   public interface Started extends Runnable {}
    public static Class<Started> STARTED=Started.class;
 
    @FunctionalInterface @Event
-   public interface Stopped {public void raise(TcpServer serv);}
+   public interface Stopped extends Runnable {}
    public static Class<Stopped> STOPPED=Stopped.class;
    
    @FunctionalInterface @Event
-   public interface Build {public void raise(TcpServer serv, TcpConnection conn);}
+   public interface Build {public void with(TcpConnection conn);}
    public static Class<Build> BUILD=Build.class;
 
    @FunctionalInterface @Event
-   public interface Removed {public void raise(TcpServer serv, TcpConnection conn);}
+   public interface Removed {public void with(TcpConnection conn);}
    public static Class<Removed> REMOVED=Removed.class;
 
    @FunctionalInterface @Event
-   public interface ServerException {public void raise(TcpServer serv, Exception ex);}
+   public interface ServerException {public void with(Exception ex);}
    public static Class<ServerException> SERVEREXCEPTION=ServerException.class;
    
    public void start() throws IOException;

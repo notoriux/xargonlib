@@ -14,10 +14,12 @@ public class SelectorWorker {
    private ExecutorService threadPool=null;
    private Selector globalSelector=null;
    private Future<?> loopTask=null;
+   private Thread selectorThread=null;
    private AtomicBoolean mustStop=new AtomicBoolean(false);
    private AtomicBoolean mustSuspend=new AtomicBoolean(false);
    private AtomicBoolean suspended=new AtomicBoolean(false);
    private Object suspendMonitor=new Object();
+   private Object startMonitor=new Object();
 
    public boolean isRunning() {
       return loopTask!=null;
@@ -32,9 +34,15 @@ public class SelectorWorker {
       mustStop.set(false);
       threadPool=Executors.newCachedThreadPool();
       loopTask=threadPool.submit(this::runLoop);
+      synchronized (startMonitor) {
+         try {
+            startMonitor.wait();
+         } catch (InterruptedException ignored) {}
+      }
    }
    
    public synchronized void suspend() {
+      if (Thread.currentThread().equals(selectorThread)) return;
       if (suspended.get()) return;
       mustSuspend.set(true);
       synchronized (suspendMonitor) {
@@ -45,6 +53,7 @@ public class SelectorWorker {
    }
    
    public synchronized void resume() {
+      if (Thread.currentThread().equals(selectorThread)) return;
       if (!suspended.get()) return;
       mustSuspend.set(false);
       synchronized (suspendMonitor) {
@@ -72,18 +81,25 @@ public class SelectorWorker {
    public SelectionKey register(SelectableChannel channel, int interestedOps, SelectionProcessor proc) {
       if (loopTask==null) throw new IllegalStateException("Selector not started");
       try {
-         return channel.register(globalSelector, interestedOps, proc);
+         boolean mustResume=!isSuspended();
+         suspend();
+         SelectionKey selKey=channel.register(globalSelector, interestedOps, proc);
+         if (mustResume) resume();
+         return selKey;
       } catch (ClosedChannelException ex) {
          throw new IllegalStateException("Invalid channel: closed", ex);
       }
    }
 
    private void runLoop() {
+      selectorThread=Thread.currentThread();
       try {
          globalSelector=Selector.open();
       } catch (IOException ex) {
          ex.printStackTrace();
          return;
+      } finally {
+         synchronized (startMonitor) {startMonitor.notify();}
       }
       
       while (!mustStop.get()) {
@@ -105,6 +121,7 @@ public class SelectorWorker {
             Set<SelectionKey> selectedKeys=globalSelector.selectedKeys();
             
             selectedKeys.forEach(key -> {
+               selectedKeys.remove(key);
                SelectionProcessor proc=(SelectionProcessor)key.attachment();
                Runnable parallelProcess=proc.processKey(this, key);
                if (parallelProcess!=null) threadPool.submit(parallelProcess::run);
@@ -116,6 +133,12 @@ public class SelectorWorker {
       }
       
       try {
+         //annullare tutte le registrazioni e chiudere i canali registrati
+         //(in realtà dovrebbero farlo i rispettivi client di SelectorWorker)
+         globalSelector.keys().forEach(key -> {
+            if (key.channel().isOpen()) try {key.channel().close();} catch (IOException ignored) {}
+            if (key.channel().isRegistered()) key.cancel();
+         });
          globalSelector.close();
       } catch (IOException ex) {
          ex.printStackTrace();

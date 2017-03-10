@@ -111,7 +111,7 @@ public abstract class EventsSourceImpl implements EventsSource {
          InvocationDispatcher idisp=new InvocationDispatcher(EventsSourceImpl.this, allSinks, method, args);
          
          switch (eventKind) {
-            case SIMPLE: idisp.simpleInvocation(); break;
+            case SIMPLE: result=idisp.simpleInvocation(); break;
             case SERIAL: idisp.serialInvocation(getThreadPool()); break;
             case PARALLEL: idisp.parallelInvocation(getThreadPool()); break;
             case SWING: idisp.swingInvocation(); break;

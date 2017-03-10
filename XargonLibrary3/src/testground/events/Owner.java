@@ -3,6 +3,7 @@ package testground.events;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
+import it.xargon.events.EventsSource;
 import it.xargon.events.OnEvent;
 
 public class Owner {
@@ -49,22 +50,26 @@ public class Owner {
    }
    
    @OnEvent(Dog.Bark.class)
-   private void dogBarked(Dog dog, int times) {
+   private void dogBarked(int times) {
+      Dog dog=EventsSource.getCurrentEventSource(Dog.class);
       System.out.println(dog.getName() + " barked " + times + " time(s)");
    }
    
    @OnEvent(Dog.WagTail.class)
-   private void dogWagging(Dog dog) {
+   private void dogWagging() {
+      Dog dog=EventsSource.getCurrentEventSource(Dog.class);
       System.out.println("Awww... " + dog.getName() + " is wagging his tail!");
    }
    
    @OnEvent(Dog.Eat.class)
-   private void dogEating(Dog dog) {
+   private void dogEating() {
+      Dog dog=EventsSource.getCurrentEventSource(Dog.class);
       System.out.println("Good boy " + dog.getName() + ", you were hungry, uh?");
    }
    
    @OnEvent(Dog.Bite.class)
-   private void dogBiting(Dog dog) {
+   private void dogBiting() {
+      Dog dog=EventsSource.getCurrentEventSource(Dog.class);
       System.out.println("Ouch! What the hell " + dog.getName() + "?!?");
    }
 }

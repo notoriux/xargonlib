@@ -8,16 +8,16 @@ import it.xargon.events.EventsSourceImpl;
 
 public class Dog extends EventsSourceImpl {
    @FunctionalInterface @Event
-   public interface Bark {public void with(Dog dog, int times);}
+   public interface Bark {public void with(int times);}
    
    @FunctionalInterface @Event
-   public interface Eat {public void with(Dog dog);}
+   public interface Eat extends Runnable {}
    
    @FunctionalInterface @Event
-   public interface WagTail {public void with(Dog dog);}
+   public interface WagTail extends Runnable {}
    
    @FunctionalInterface @Event
-   public interface Bite {public void with(Dog dog);}
+   public interface Bite extends Runnable {}
    
    private String name=null;
    
@@ -33,18 +33,18 @@ public class Dog extends EventsSourceImpl {
    
    public void call() {
       int barks=ThreadLocalRandom.current().nextInt(2,6);
-      raise(Bark.class).with(this, barks);
+      raise(Bark.class).with(barks);
    }
    
    public void feed() {
-      raise(Eat.class).with(this);
+      raise(Eat.class);
    }
    
    public void cuddle() {
-      raise(WagTail.class).with(this);
+      raise(WagTail.class);
    }
    
    public void scold() {
-      raise(Bite.class).with(this);
+      raise(Bite.class);
    }
 }
