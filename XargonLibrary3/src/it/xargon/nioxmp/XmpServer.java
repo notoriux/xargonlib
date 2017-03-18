@@ -1,8 +1,8 @@
 package it.xargon.nioxmp;
 
-public class XmpSession {
+public class XmpServer {
 
-   public XmpSession() {
+   public XmpServer() {
       // TODO Auto-generated constructor stub
    }
 

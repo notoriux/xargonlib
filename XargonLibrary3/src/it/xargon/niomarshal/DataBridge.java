@@ -21,19 +21,8 @@ public class DataBridge {
       return directMemory?ByteBuffer.allocateDirect(capacity):ByteBuffer.allocate(capacity);
    }
    
-   @SuppressWarnings("unchecked")
    private void installBaseMarshallers() {
-      Class<?>[] allClassesInPackage=null;
-      try {
-         allClassesInPackage=Tools.getClasses(DataBridge.class.getPackage().getName());
-      } catch (ClassNotFoundException | IOException e) {
-         throw new IllegalStateException(e);
-      }
-      
-      for (Class<?> testClass:allClassesInPackage) {
-         if (AbstractMarshaller.class.isAssignableFrom(testClass) && !Modifier.isAbstract(testClass.getModifiers()))
-            installMarshaller((Class<? extends AbstractMarshaller<?>>) testClass);
-      }
+      installMarshallersFromPackage(DataBridge.class.getPackage().getName());
    }
    
    private final static Field dataBridgeField;
@@ -46,6 +35,21 @@ public class DataBridge {
          throw new IllegalStateException(e); //This piece of code must always succeed, otherwise fail class loading
       }
       dataBridgeField=tmp;
+   }
+   
+   @SuppressWarnings("unchecked")
+   public void installMarshallersFromPackage(String pkg) {
+      Class<?>[] allClassesInPackage=null;
+      try {
+         allClassesInPackage=Tools.getClasses(pkg);
+      } catch (ClassNotFoundException | IOException e) {
+         throw new IllegalStateException(e);
+      }
+      
+      for (Class<?> testClass:allClassesInPackage) {
+         if (AbstractMarshaller.class.isAssignableFrom(testClass) && !Modifier.isAbstract(testClass.getModifiers()))
+            installMarshaller((Class<? extends AbstractMarshaller<?>>) testClass);
+      }
    }
    
    public void installMarshaller(Class<? extends AbstractMarshaller<?>> marshallerClass) {

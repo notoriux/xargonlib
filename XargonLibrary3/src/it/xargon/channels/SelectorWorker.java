@@ -7,11 +7,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import it.xargon.util.Debug;
+
 import java.io.IOException;
 import java.nio.channels.*;
 
 public class SelectorWorker {
    private ExecutorService threadPool=null;
+   private boolean isLocalThreadPool=false;
    private Selector globalSelector=null;
    private Future<?> loopTask=null;
    private Thread selectorThread=null;
@@ -21,6 +25,40 @@ public class SelectorWorker {
    private Object suspendMonitor=new Object();
    private Object startMonitor=new Object();
 
+   public interface ExceptionHandler {
+      public Runnable handle(Exception ex, SelectionKey key);
+   }
+   private final ExceptionHandler defaultExceptionHandler=new ExceptionHandler() {      
+      @Override
+      public Runnable handle(Exception ex, SelectionKey key) {
+         StringBuilder text=new StringBuilder("Exception while processing selection key " + key.toString() + "\n");
+         text.append(Debug.exceptionToString(ex));
+         Debug.stderr.println(text.toString());
+         return null;
+      }
+   };
+   
+   private ExceptionHandler exceptionHandler=defaultExceptionHandler;
+   
+   public SelectorWorker() {
+      this(null);
+   }
+   
+   public SelectorWorker(ExecutorService threadPool) {
+      if (threadPool==null) {
+         this.threadPool=Executors.newCachedThreadPool();
+         this.isLocalThreadPool=true;
+      } else {
+         this.threadPool=threadPool;
+         this.isLocalThreadPool=false;
+      }
+   }
+   
+   public void setExceptionHandler(ExceptionHandler exceptionHandler) {
+      if (exceptionHandler==null) this.exceptionHandler=defaultExceptionHandler;
+      else this.exceptionHandler=exceptionHandler;
+   }
+   
    public boolean isRunning() {
       return loopTask!=null;
    }
@@ -71,11 +109,17 @@ public class SelectorWorker {
          globalSelector.wakeup();
          loopTask.get();
          loopTask=null;
-         threadPool.shutdown();
-         threadPool.awaitTermination(5, TimeUnit.MINUTES);
+         if (isLocalThreadPool) {
+            threadPool.shutdown();
+            threadPool.awaitTermination(5, TimeUnit.MINUTES);
+         }
       } catch (InterruptedException | ExecutionException e) {
          e.printStackTrace(System.err);
       }
+   }
+   
+   public SelectionKey getRegistrationKey(SelectableChannel channel) {
+      return channel.keyFor(globalSelector);
    }
    
    public SelectionKey register(SelectableChannel channel, int interestedOps, SelectionProcessor proc) {
@@ -123,7 +167,12 @@ public class SelectorWorker {
             selectedKeys.forEach(key -> {
                selectedKeys.remove(key);
                SelectionProcessor proc=(SelectionProcessor)key.attachment();
-               Runnable parallelProcess=proc.processKey(this, key);
+               Runnable parallelProcess=null;
+               try {
+                  parallelProcess=proc.processKey(this, key);
+               } catch (Exception ex) {
+                  parallelProcess=exceptionHandler.handle(ex, key);
+               }
                if (parallelProcess!=null) threadPool.submit(parallelProcess::run);
             });
          } catch (Exception ex) {
