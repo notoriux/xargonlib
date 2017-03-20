@@ -48,11 +48,15 @@ public class DataBridge {
       
       for (Class<?> testClass:allClassesInPackage) {
          if (AbstractMarshaller.class.isAssignableFrom(testClass) && !Modifier.isAbstract(testClass.getModifiers()))
-            installMarshaller((Class<? extends AbstractMarshaller<?>>) testClass);
+            installMarshaller((Class<? extends AbstractMarshaller<?>>) testClass, true);
       }
    }
    
    public void installMarshaller(Class<? extends AbstractMarshaller<?>> marshallerClass) {
+      installMarshaller(marshallerClass, false);
+   }
+   
+   private void installMarshaller(Class<? extends AbstractMarshaller<?>> marshallerClass, boolean tolerant) {
       AbstractMarshaller<?> newMarshaller=null;
 
       try {
@@ -60,11 +64,12 @@ public class DataBridge {
          newMarshaller=marConstructor.newInstance();
          dataBridgeField.set(newMarshaller, this); //INJECTION
       } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-         throw new IllegalArgumentException(e);
+         if (!tolerant) throw new IllegalArgumentException(e);
+         return;
       }
       
       String mname=newMarshaller.getName();
-      if (installedMarshallers.containsKey(mname))
+      if (installedMarshallers.containsKey(mname) && !tolerant)
          throw new IllegalArgumentException("Marshaller " + mname + " already registered");
       
       installedMarshallers.put(mname, newMarshaller);

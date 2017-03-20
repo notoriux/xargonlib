@@ -10,6 +10,7 @@ import it.xargon.channels.SelectorWorker;
 import it.xargon.events.EventsSource;
 import it.xargon.events.OnEvent;
 import it.xargon.niomarshal.DataBridge;
+import it.xargon.nioxmp.msg.MarXmpContentRequest;
 
 public class XmpFactory implements Closeable {
    private DataBridge dataBridge=null;
@@ -20,7 +21,7 @@ public class XmpFactory implements Closeable {
    
    public XmpFactory() {
       dataBridge=new DataBridge(false);
-      dataBridge.installMarshallersFromPackage(XmpFactory.class.getPackage().getName());
+      dataBridge.installMarshallersFromPackage(MarXmpContentRequest.class.getPackage().getName());
       threadPool=Executors.newCachedThreadPool();
       selectorWorker=new SelectorWorker(threadPool);
       selectorWorker.start();
