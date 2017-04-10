@@ -21,7 +21,7 @@ public class MarCollection extends AbstractMarshaller<Collection> {
    @Override
    public ByteBuffer marshal(Collection coll) {   
       //ArrayList<ByteBuffer> elements=new ArrayList<>();
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       
       //Implementazione concreta della collection
       byte[] className=Tools.getBytes(coll.getClass().getName());

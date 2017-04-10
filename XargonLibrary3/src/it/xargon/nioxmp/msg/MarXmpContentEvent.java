@@ -17,7 +17,7 @@ public class MarXmpContentEvent extends AbstractMarshaller<XmpContentEvent> {
    
    @Override
    public ByteBuffer marshal(XmpContentEvent xmpmessage) {
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       //Session ID
       accumulator.addWithByteSize(xmpmessage.getSessionId().getData());
       //Message ID

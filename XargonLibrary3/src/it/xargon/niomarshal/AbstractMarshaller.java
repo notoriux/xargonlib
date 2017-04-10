@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import it.xargon.util.Tools;
-import it.xargon.util.ByteBufferAccumulator;
+import it.xargon.util.ByteBufferAllocator;
 
 public abstract class AbstractMarshaller<T> {
    private String name=null;
@@ -13,11 +13,10 @@ public abstract class AbstractMarshaller<T> {
    private Class<T> affineClass=null;
    //iniettato dal databridge stesso durante l'installazione del marshaller
    private DataBridge dataBridge=null;
-   
-   protected ByteBufferAccumulator.Allocator allocator=new ByteBufferAccumulator.Allocator() { 
-      @Override
-      public ByteBuffer alloc(int size) {return dataBridge.allocate(size);}
-   };
+      
+   protected ByteBufferAllocator getAllocator() {
+      return dataBridge.getAllocator();
+   }
 
    @SuppressWarnings({"unchecked"})
    protected AbstractMarshaller(String name) {
@@ -26,7 +25,7 @@ public abstract class AbstractMarshaller<T> {
       affineClass=((Class<T>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0]);
    }
    
-   protected ByteBuffer alloc(int size) {return allocator.alloc(size);}
+   protected ByteBuffer alloc(int size) {return getAllocator().alloc(size);}
    
    protected DataBridge getDataBridge() {return dataBridge;}
    

@@ -32,7 +32,7 @@ public class MarKVPair extends AbstractMarshaller<Map.Entry> {
 
    @Override
    public ByteBuffer marshal(Entry mapentry) {
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       
       if (mapentry.getKey()==null) throw new IllegalArgumentException("Null-key not allowed");
       accumulator.add(getDataBridge().marshal(mapentry.getKey()));

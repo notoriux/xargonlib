@@ -17,7 +17,7 @@ public class MarXmpSessionClose extends AbstractMarshaller<XmpSessionClose> {
    
    @Override
    public ByteBuffer marshal(XmpSessionClose xmpmessage) {
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       accumulator.addWithByteSize(xmpmessage.getSessionId().getData());
       return accumulator.gather();
    }

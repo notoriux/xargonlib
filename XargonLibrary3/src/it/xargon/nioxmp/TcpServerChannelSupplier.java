@@ -18,13 +18,14 @@ import it.xargon.events.EventsSourceImpl;
 public class TcpServerChannelSupplier extends EventsSourceImpl implements ActiveChannelSupplier {
    private XmpFactory xf=null;
    private ArrayList<ServerSocketChannel> serverSockets=null;
+   private ArrayList<InetSocketAddress> selLocalAddresses=null;
 
    TcpServerChannelSupplier(XmpFactory xmpFactory, int port, String... interfaces) throws IOException {
       this.xf=xmpFactory;
       serverSockets=new ArrayList<>();
       
       //Only if the server is required to bind to a specific set of local interfaces
-      ArrayList<InetSocketAddress> selLocalAddresses=new ArrayList<>();
+      selLocalAddresses=new ArrayList<>();
       
       if (interfaces!=null && interfaces.length>0) {
          //Retrieve all local public IP addresses
@@ -48,8 +49,11 @@ public class TcpServerChannelSupplier extends EventsSourceImpl implements Active
       } else {
          //No interfaces specified - we just bind to all local addresses
          selLocalAddresses.add(new InetSocketAddress(port));         
-      }
-      
+      }      
+   }
+   
+   @Override
+   public void start() throws IOException {
       //Create a ServerSocketChannel for each required interface
       //We need also to configure them in non-blocking mode and register
       //them to a local selector processor, in order to process incoming

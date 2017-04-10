@@ -23,7 +23,6 @@ public class TcpClientChannelSupplier extends EventsSourceImpl implements Passiv
       sockChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
       sockChannel.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
       sockChannel.connect(destSocketAddress);
-      sockChannel.configureBlocking(false);
       SolidByteChannel result=new SolidByteChannel(sockChannel);
       return result;
    }

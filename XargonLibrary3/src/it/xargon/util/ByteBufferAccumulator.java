@@ -5,14 +5,10 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 public class ByteBufferAccumulator {
-   public interface Allocator {
-      public ByteBuffer alloc(int size);
-   }
-   
    private ArrayList<ByteBuffer> accumulator=null;
-   private Allocator allocator=null;
+   private ByteBufferAllocator allocator=null;
    
-   public ByteBufferAccumulator(Allocator allocator) {
+   public ByteBufferAccumulator(ByteBufferAllocator allocator) {
       this.allocator=allocator;
       accumulator=new ArrayList<>();
    }

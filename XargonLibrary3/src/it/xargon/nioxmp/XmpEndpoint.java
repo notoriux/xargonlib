@@ -1,11 +1,13 @@
 package it.xargon.nioxmp;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import it.xargon.events.Event;
 import it.xargon.events.EventsSource;
+import it.xargon.util.Identifier;
 
-public interface XmpClient extends EventsSource {
+public interface XmpEndpoint extends EventsSource {
    @FunctionalInterface @Event
    public interface RequestReceived {public ByteBuffer with(ByteBuffer request);}
    
@@ -32,9 +34,11 @@ public interface XmpClient extends EventsSource {
 
    public boolean isInitiator();
    
-   public ByteBuffer sendRequest(ByteBuffer request);
+   public Identifier getSessionId();
    
-   public void sendEvent(ByteBuffer event);
+   public ByteBuffer sendRequest(ByteBuffer contents) throws IOException;
+   
+   public void sendEvent(ByteBuffer contents) throws IOException;
    
    public boolean isActive();
    

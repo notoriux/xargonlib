@@ -6,6 +6,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import it.xargon.niomarshal.*;
+import it.xargon.util.ByteBufferAllocator;
 import it.xargon.util.Debug;
 
 public class TestMarshal {
@@ -15,7 +16,7 @@ public class TestMarshal {
          "a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"});
    
    public static void main(String[] args) throws Exception {
-      DataBridge dbridge=new DataBridge(true);
+      DataBridge dbridge=new DataBridge(ByteBufferAllocator.INDIRECT);
       
       ArrayList<ArrayList<String>> bigObject=new ArrayList<>();
       
@@ -37,7 +38,7 @@ public class TestMarshal {
       
       System.out.println(received.toString() + " (" + received.getClass().getName() + ")");
       
-      Parser dbParser=new Parser(dbridge);
+      Parser dbParser=new Parser(ByteBufferAllocator.INDIRECT);
       
       ByteBuffer result[]=dbParser.feed(buf2.duplicate(), buf2.duplicate(), buf2.duplicate());
       

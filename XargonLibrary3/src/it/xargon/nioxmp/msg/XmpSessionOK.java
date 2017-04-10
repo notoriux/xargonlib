@@ -2,7 +2,7 @@ package it.xargon.nioxmp.msg;
 
 import it.xargon.util.*;
 
-class XmpSessionOK extends XmpSessionMessage {
+public class XmpSessionOK extends XmpSessionMessage {
    public XmpSessionOK(Identifier sessionId) {
       super(sessionId);
    }

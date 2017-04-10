@@ -16,7 +16,7 @@ public class MarMap extends AbstractMarshaller<Map> {
    @SuppressWarnings("unchecked")
    @Override
    public ByteBuffer marshal(Map map) {
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       //Numero di elementi nella mappa
       accumulator.add(map.size());
       //Serializziamo ogni singola coppia chiave-valore

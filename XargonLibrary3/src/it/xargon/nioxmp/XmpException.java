@@ -1,7 +1,8 @@
 package it.xargon.nioxmp;
 
 public class XmpException extends RuntimeException {
-
+   private Object attachedInfo=null;
+   
    public XmpException() {
       super();
    }
@@ -22,5 +23,11 @@ public class XmpException extends RuntimeException {
          boolean enableSuppression, boolean writableStackTrace) {
       super(message, cause, enableSuppression, writableStackTrace);
    }
+   
+   public XmpException setAttachedInfo(Object attachedInfo) {
+      this.attachedInfo=attachedInfo;
+      return this;
+   }
 
+   public Object getAttachedInfo() {return attachedInfo;}
 }

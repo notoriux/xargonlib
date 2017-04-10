@@ -1,5 +1,6 @@
 package it.xargon.niomarshal;
 
+import it.xargon.util.ByteBufferAllocator;
 import it.xargon.util.Tools;
 
 import java.util.*;
@@ -9,17 +10,15 @@ import java.nio.ByteBuffer;
 
 public class DataBridge {
    private LinkedHashMap<String, AbstractMarshaller<?>> installedMarshallers=null;
-   private boolean directMemory=false;
+   private ByteBufferAllocator allocator=null;
       
-   public DataBridge(boolean directMemory) {
-      this.directMemory=directMemory;
+   public DataBridge(ByteBufferAllocator allocator) {
+      this.allocator=allocator;
       installedMarshallers=new LinkedHashMap<String, AbstractMarshaller<?>>();
       installBaseMarshallers();
    }
-   
-   ByteBuffer allocate(int capacity) {
-      return directMemory?ByteBuffer.allocateDirect(capacity):ByteBuffer.allocate(capacity);
-   }
+      
+   public ByteBufferAllocator getAllocator() {return allocator;}
    
    private void installBaseMarshallers() {
       installMarshallersFromPackage(DataBridge.class.getPackage().getName());
@@ -106,7 +105,7 @@ public class DataBridge {
       byte[] marName=mar.getEncName();
       ByteBuffer contents=mar.marshalObject(obj);
       
-      ByteBuffer result=allocate(Integer.BYTES + marName.length +  Integer.BYTES + contents.remaining());
+      ByteBuffer result=allocator.alloc(Integer.BYTES + marName.length +  Integer.BYTES + contents.remaining());
       result.putInt(marName.length);result.put(marName);
       result.putInt(contents.remaining()).put(contents).flip();
             

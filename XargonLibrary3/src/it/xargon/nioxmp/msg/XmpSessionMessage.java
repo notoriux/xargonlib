@@ -1,19 +1,13 @@
 package it.xargon.nioxmp.msg;
 
-import java.util.Objects;
-
 import it.xargon.util.Identifier;
-import it.xargon.util.Debug.Printable;
 
-public abstract class XmpSessionMessage implements Printable {
-   protected Identifier sessionId=null;
+public abstract class XmpSessionMessage extends XmpMessage {
    
    public XmpSessionMessage(Identifier sessionId) {
-      this.sessionId=Objects.requireNonNull(sessionId);
+      super(sessionId);
    }
-   
-   public Identifier getSessionId() {return sessionId;}
-   
+      
    protected abstract void addDetails(StringBuilder sb);
    
    @Override

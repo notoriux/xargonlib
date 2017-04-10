@@ -5,7 +5,7 @@ import java.util.*;
 
 public class Identifier implements Cloneable, Comparable<Identifier>, Serializable {
    protected final static byte BZERO=Bitwise.asByte(0);
-   protected final static Identifier IDZERO=new Identifier();
+   public final static Identifier IDZERO=new Identifier();
 
    protected byte[] contents=null;
    

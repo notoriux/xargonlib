@@ -17,8 +17,9 @@ public class MarXmpSessionKO extends AbstractMarshaller<XmpSessionKO> {
    
    @Override
    public ByteBuffer marshal(XmpSessionKO xmpmessage) {
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       accumulator.addWithByteSize(xmpmessage.getSessionId().getData());
+      accumulator.addWithSize(xmpmessage.getReason().getBytes());
       return accumulator.gather();
    }
 
@@ -29,7 +30,12 @@ public class MarXmpSessionKO extends AbstractMarshaller<XmpSessionKO> {
       buffer.get(sidBuf);
       Identifier sessionId=new Identifier(sidBuf);
       
-      return new XmpSessionKO(sessionId);
+      int reasonSize=Bitwise.asInt(buffer.get());
+      byte[] reasonBuf=new byte[reasonSize];
+      buffer.get(reasonBuf);
+      String reason=new String(reasonBuf);
+      
+      return new XmpSessionKO(sessionId, reason);
    }
    
 }

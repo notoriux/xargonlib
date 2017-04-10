@@ -17,7 +17,7 @@ public class MarXmpContentRequest extends AbstractMarshaller<XmpContentRequest> 
    
    @Override
    public ByteBuffer marshal(XmpContentRequest xmpmessage) {
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       //Session ID
       accumulator.addWithByteSize(xmpmessage.getSessionId().getData());
       //Message ID

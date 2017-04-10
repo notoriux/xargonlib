@@ -17,7 +17,7 @@ public class MarXmpSessionOK extends AbstractMarshaller<XmpSessionOK> {
    
    @Override
    public ByteBuffer marshal(XmpSessionOK xmpmessage) {
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       accumulator.addWithByteSize(xmpmessage.getSessionId().getData());
       return accumulator.gather();
    }

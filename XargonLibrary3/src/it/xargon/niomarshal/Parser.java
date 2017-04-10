@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import it.xargon.util.ByteBufferAccumulator;
+import it.xargon.util.ByteBufferAllocator;
 
 public class Parser {
    private enum EXPECTING {
@@ -13,22 +14,22 @@ public class Parser {
       CONTENTBUFFER
    }
    
-   private DataBridge dataBridge=null;
+   private ByteBufferAllocator allocator=null;
    private EXPECTING expect=null;
    private ByteBuffer buffer=null;
    private ByteBufferAccumulator accumulator=null;
    private int len=0;
    
-   public Parser(DataBridge dataBridge) {
-      this.dataBridge=dataBridge;
+   public Parser(ByteBufferAllocator allocator) {
+      this.allocator=allocator;
       
-      accumulator=new ByteBufferAccumulator(size -> dataBridge.allocate(size));
+      accumulator=new ByteBufferAccumulator(allocator);
       reset();
    }
    
    public void reset() {
       expect=EXPECTING.NAMELEN;
-      buffer=dataBridge.allocate(Integer.BYTES);
+      buffer=allocator.alloc(Integer.BYTES);
       accumulator.clear();
    }
 
@@ -41,7 +42,7 @@ public class Parser {
             if (!buffer.hasRemaining()) {
                buffer.flip();
                len=buffer.getInt();
-               buffer=dataBridge.allocate(len);
+               buffer=allocator.alloc(len);
                expect=EXPECTING.NAMEBUFFER;
             }
             break;
@@ -49,7 +50,7 @@ public class Parser {
             buffer.put(b);
             if (!buffer.hasRemaining()) {
                accumulator.addWithSize(buffer, true);
-               buffer=dataBridge.allocate(Integer.BYTES);
+               buffer=allocator.alloc(Integer.BYTES);
                expect=EXPECTING.CONTENTLEN;
             }
             break;
@@ -58,7 +59,7 @@ public class Parser {
             if (!buffer.hasRemaining()) {
                buffer.flip();
                len=buffer.getInt();
-               buffer=dataBridge.allocate(len);
+               buffer=allocator.alloc(len);
                expect=EXPECTING.CONTENTBUFFER;
             }
             break;

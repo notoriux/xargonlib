@@ -15,7 +15,7 @@ public class MarArray extends AbstractMarshaller<Object> {
    @Override
    @SuppressWarnings("unchecked")
    public ByteBuffer marshal(Object array) {
-      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(allocator);
+      ByteBufferAccumulator accumulator=new ByteBufferAccumulator(getAllocator());
       
       //Ottenere un marshaller più fedele possibile al component type e annotarlo nell'accumulatore
       AbstractMarshaller<Object> ctmar=(AbstractMarshaller<Object>) getDataBridge().getBestMarshaller(array.getClass().getComponentType());
